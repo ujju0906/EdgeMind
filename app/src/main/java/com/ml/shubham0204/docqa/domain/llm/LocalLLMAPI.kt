@@ -14,25 +14,29 @@ class LocalLLMAPI(
 ) : LLMProvider {
     private var llmInference: LlmInference? = null
 
-    private fun ensureLLMInitialized() {
+    override suspend fun init() {
         if (llmInference != null) {
             return
         }
         try {
+            Log.d("AppLifecycle", "LocalLLMAPI: Model loading started.")
+            val startTime = System.currentTimeMillis()
             val modelPath = modelManager.getModelPath()
             if (!modelManager.isModelDownloaded()) {
                 throw IllegalStateException("Model is not downloaded, cannot initialize LocalLLMAPI")
             }
             // Set the configuration options for the LLM Inference task
-            val taskOptions = LlmInferenceOptions.builder()
-                .setModelPath(modelPath)
-                .setMaxTokens(1024)
-                .setMaxTopK(64)
-                .build()
+            val taskOptions =
+                LlmInferenceOptions.builder()
+                    .setModelPath(modelPath)
+                    .setMaxTokens(1024)
+                /*    .setMaxTopK(40) */
+                    .build()
 
             // Create an instance of the LLM Inference task
             llmInference = LlmInference.createFromOptions(context, taskOptions)
-            Log.d("LocalLLMAPI", "LLM initialized successfully with model: $modelPath")
+            val endTime = System.currentTimeMillis()
+            Log.d("AppLifecycle", "LocalLLMAPI: Model loading finished in ${endTime - startTime}ms")
         } catch (e: Exception) {
             Log.e("LocalLLMAPI", "Failed to initialize LLM: ${e.message}", e)
             throw e
@@ -42,13 +46,14 @@ class LocalLLMAPI(
     override fun generateResponse(prompt: String): Flow<String> =
         callbackFlow {
             try {
-                ensureLLMInitialized()
+                if (llmInference == null) {
+                    throw IllegalStateException("LLM not initialized. Call init() first.")
+                }
+                Log.d("AppPerformance", "Starting: Local LLM Inference")
                 Log.d("LocalLLMAPI", "Generating response for prompt: $prompt")
 
-                val llm = llmInference ?: throw IllegalStateException("LLM not initialized")
-
                 // Generate response using the local model
-                llm.generateResponseAsync(
+                llmInference!!.generateResponseAsync(
                     prompt,
                     { partialResult, done ->
                         trySend(partialResult)

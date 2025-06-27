@@ -19,6 +19,7 @@ import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.URL
 import kotlin.math.min
+import android.util.Log
 
 class DocsViewModel(
     private val documentsDB: DocumentsDB,
@@ -33,6 +34,12 @@ class DocsViewModel(
         val text =
             Readers.getReaderForDocType(documentType).readFromInputStream(inputStream)
                 ?: return@withContext
+        createEmbeddingsAndSaveToDB(text, fileName)
+    }
+
+    private suspend fun createEmbeddingsAndSaveToDB(text: String, fileName: String) {
+        Log.d("AppPerformance", "Starting: Create Embeddings and Save to DB")
+        val startTime = System.currentTimeMillis()
         val newDocId =
             documentsDB.addDocument(
                 Document(
@@ -46,7 +53,7 @@ class DocsViewModel(
         setProgressDialogText("Adding chunks to database...")
         val size = chunks.size
         chunks.forEachIndexed { index, s ->
-            setProgressDialogText("Added ${index + 1}/$size chunk(s) to database...")
+            setProgressDialogText("Embedding ${index + 1}/$size chunk(s)...")
             val embedding = sentenceEncoder.encodeText(s)
             chunksDB.addChunk(
                 Chunk(
@@ -57,6 +64,8 @@ class DocsViewModel(
                 ),
             )
         }
+        val endTime = System.currentTimeMillis()
+        Log.d("AppPerformance", "Finished: Create Embeddings and Save to DB. Time taken: ${endTime - startTime}ms")
     }
 
     suspend fun addDocumentFromUrl(
@@ -88,6 +97,7 @@ class DocsViewModel(
 
                 // Pass file to your document handling logic
                 addDocument(file.inputStream(), fileName, documentType)
+                createEmbeddingsAndSaveToDB(file.readText(), fileName)
 
                 withContext(Dispatchers.Main) {
                     onDownloadComplete(true)

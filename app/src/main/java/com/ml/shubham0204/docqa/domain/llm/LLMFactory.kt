@@ -14,19 +14,8 @@ class LLMFactory(
         REMOTE
     }
     
-    private var currentLLM: LLMProvider? = null
-    private var currentType: LLMType? = null
-    
-    suspend fun getLLM(type: LLMType = LLMType.LOCAL): LLMProvider {
-        // If we already have the requested type, return it
-        if (currentType == type && currentLLM != null) {
-            return currentLLM!!
-        }
-        
-        // Close existing LLM if different type
-        currentLLM?.close()
-        
-        currentLLM = when (type) {
+    fun create(type: LLMType): LLMProvider {
+        return when (type) {
             LLMType.LOCAL -> {
                 if (!modelManager.isModelDownloaded()) {
                     throw IllegalStateException("Model not available locally")
@@ -39,9 +28,6 @@ class LLMFactory(
                 GeminiRemoteAPI(apiKey)
             }
         }
-        
-        currentType = type
-        return currentLLM!!
     }
     
     fun isLocalModelAvailable(): Boolean {
@@ -50,11 +36,5 @@ class LLMFactory(
     
     fun isRemoteModelAvailable(): Boolean {
         return geminiAPIKey.getAPIKey() != null
-    }
-    
-    fun close() {
-        currentLLM?.close()
-        currentLLM = null
-        currentType = null
     }
 } 

@@ -12,9 +12,10 @@ import kotlinx.coroutines.flow.map
 class GeminiRemoteAPI(
     private val apiKey: String,
 ) : LLMProvider {
-    private val generativeModel: GenerativeModel
+    private var generativeModel: GenerativeModel? = null
 
-    init {
+    override suspend fun init() {
+        Log.d("AppLifecycle", "GeminiRemoteAPI: Initializing client.")
         // Here's a good reference on topK, topP and temperature
         // parameters, which are used to control the output of a LLM
         // See
@@ -34,14 +35,17 @@ class GeminiRemoteAPI(
                         )
                     },
             )
+        Log.d("AppLifecycle", "GeminiRemoteAPI: Client initialized.")
     }
 
     override fun generateResponse(prompt: String): Flow<String> {
+        Log.d("AppPerformance", "Starting: Remote LLM Inference")
         Log.d("APP", "Prompt given: $prompt")
-        return generativeModel.generateContentStream(prompt).map { it.text ?: "" }
+        return generativeModel!!.generateContentStream(prompt).map { it.text ?: "" }
     }
 
     override fun close() {
         // No cleanup needed for remote API
+        generativeModel = null
     }
 }
