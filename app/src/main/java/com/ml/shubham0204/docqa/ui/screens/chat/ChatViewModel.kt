@@ -11,6 +11,7 @@ import com.ml.shubham0204.docqa.domain.llm.AppLLMProvider
 import com.ml.shubham0204.docqa.domain.llm.LLMFactory
 import com.ml.shubham0204.docqa.domain.llm.LLMInitializationState
 import com.ml.shubham0204.docqa.domain.llm.LLMProvider
+import com.ml.shubham0204.docqa.domain.sms.CallLogsReader
 import com.ml.shubham0204.docqa.domain.sms.SmsReader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,7 +28,8 @@ class ChatViewModel(
     private val geminiAPIKey: GeminiAPIKey,
     private val sentenceEncoder: SentenceEmbeddingProvider,
     private val llmFactory: LLMFactory,
-    private val smsReader: SmsReader
+    private val smsReader: SmsReader,
+    private val callLogsReader: CallLogsReader
 ) : ViewModel() {
 
     private val _questionState = MutableStateFlow("")
@@ -46,11 +48,18 @@ class ChatViewModel(
     private val _isSmsContextEnabled = MutableStateFlow(false)
     val isSmsContextEnabled: StateFlow<Boolean> = _isSmsContextEnabled
 
+    private val _isCallLogContextEnabled = MutableStateFlow(false)
+    val isCallLogContextEnabled: StateFlow<Boolean> = _isCallLogContextEnabled
+
     private val _retrievedContextListState = MutableStateFlow(emptyList<RetrievedContext>())
     val retrievedContextListState: StateFlow<List<RetrievedContext>> = _retrievedContextListState
 
     fun toggleSmsContext() {
         _isSmsContextEnabled.value = !_isSmsContextEnabled.value
+    }
+
+    fun toggleCallLogContext() {
+        _isCallLogContextEnabled.value = !_isCallLogContextEnabled.value
     }
 
     fun getAnswer(
@@ -75,7 +84,23 @@ class ChatViewModel(
                         )
                     }
                 }
-            } else {
+            }
+            if (_isCallLogContextEnabled.value) {
+                val callLogs = callLogsReader.readLastCallLogs()
+                if (callLogs.isNotEmpty()) {
+                    jointContext += "Recent call logs:\n"
+                    callLogs.forEach { call ->
+                        val callName = call.name ?: "Unknown"
+                        val callInfo = "Name: $callName, Number: ${call.number}, Type: ${call.type}, Duration: ${call.duration}s"
+                        jointContext += "- $callInfo\n"
+                        retrievedContextList.add(
+                            RetrievedContext(fileName = "Call Log", context = callInfo)
+                        )
+                    }
+                }
+            }
+
+            if (!(_isSmsContextEnabled.value || _isCallLogContextEnabled.value)) {
                 Log.d("AppPerformance", "Starting: Encode query and retrieve context")
                 val queryStartTime = System.currentTimeMillis()
                 val queryEmbedding = sentenceEncoder.encodeText(query)

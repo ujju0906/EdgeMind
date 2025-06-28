@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Message
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
@@ -96,6 +97,9 @@ fun ChatScreen(
         val isSmsContextEnabled by chatViewModel.isSmsContextEnabled.collectAsState()
         var showSmsSettingsDialog by remember { mutableStateOf(false) }
 
+        val isCallLogContextEnabled by chatViewModel.isCallLogContextEnabled.collectAsState()
+        var showCallLogSettingsDialog by remember { mutableStateOf(false) }
+
         if (showSmsSettingsDialog) {
             AlertDialog(
                 onDismissRequest = { showSmsSettingsDialog = false },
@@ -126,7 +130,37 @@ fun ChatScreen(
             )
         }
 
-        val launcher =
+        if (showCallLogSettingsDialog) {
+            AlertDialog(
+                onDismissRequest = { showCallLogSettingsDialog = false },
+                title = { Text("Permission Required") },
+                text = {
+                    Text(
+                        "You have permanently denied the Call Log permission. To use this feature, you must enable it from the app settings."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showCallLogSettingsDialog = false
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", context.packageName, null)
+                            }
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Text("Open Settings")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCallLogSettingsDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        val smsPermissionLauncher =
             rememberLauncherForActivityResult(
                 ActivityResultContracts.RequestPermission()
             ) { isGranted: Boolean ->
@@ -136,6 +170,22 @@ fun ChatScreen(
                     val activity = context as? Activity
                     if (activity != null && !activity.shouldShowRequestPermissionRationale(Manifest.permission.READ_SMS)) {
                         showSmsSettingsDialog = true
+                    } else {
+                        Toast.makeText(context, "Permission denied.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+        val callLogPermissionLauncher =
+            rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { isGranted: Boolean ->
+                if (isGranted) {
+                    chatViewModel.toggleCallLogContext()
+                } else {
+                    val activity = context as? Activity
+                    if (activity != null && !activity.shouldShowRequestPermissionRationale(Manifest.permission.READ_CALL_LOG)) {
+                        showCallLogSettingsDialog = true
                     } else {
                         Toast.makeText(context, "Permission denied.", Toast.LENGTH_SHORT).show()
                     }
@@ -164,7 +214,7 @@ fun ChatScreen(
                                 ) {
                                     chatViewModel.toggleSmsContext()
                                 } else {
-                                    launcher.launch(Manifest.permission.READ_SMS)
+                                    smsPermissionLauncher.launch(Manifest.permission.READ_SMS)
                                 }
                             }
                         ) {
@@ -172,6 +222,27 @@ fun ChatScreen(
                                 imageVector = Icons.Default.Message,
                                 contentDescription = "Toggle SMS Context",
                                 tint = if (isSmsContextEnabled) Color.Green else Color.Gray
+                            )
+                        }
+
+                        // Call Log Context Toggle
+                        IconButton(
+                            onClick = {
+                                if (ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.READ_CALL_LOG
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    chatViewModel.toggleCallLogContext()
+                                } else {
+                                    callLogPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Phone,
+                                contentDescription = "Toggle Call Log Context",
+                                tint = if (isCallLogContextEnabled) Color.Green else Color.Gray
                             )
                         }
 

@@ -6,6 +6,7 @@ import com.ml.shubham0204.docqa.data.GeminiAPIKey
 import com.ml.shubham0204.docqa.domain.embeddings.SentenceEmbeddingProvider
 import com.ml.shubham0204.docqa.domain.llm.LLMFactory
 import com.ml.shubham0204.docqa.domain.llm.ModelManager
+import com.ml.shubham0204.docqa.domain.sms.CallLogsReader
 import com.ml.shubham0204.docqa.domain.sms.SmsReader
 import com.ml.shubham0204.docqa.ui.screens.chat.ChatViewModel
 import com.ml.shubham0204.docqa.ui.screens.docs.DocsViewModel
@@ -26,9 +27,10 @@ val appModule = module {
     single { ModelManager(androidContext()) }
     single { LLMFactory(context = androidContext(), geminiAPIKey = get(), modelManager = get()) }
     single { SmsReader(androidContext()) }
+    single { CallLogsReader(androidContext()) }
 
     // UI Layer (ViewModels)
-    viewModel { ChatViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { ChatViewModel(get(), get(), get(), get(), get(), get(), get()) }
     viewModel { DocsViewModel(get(), get(), get()) }
     viewModel { ModelDownloadViewModel(get(), androidContext()) }
 }
