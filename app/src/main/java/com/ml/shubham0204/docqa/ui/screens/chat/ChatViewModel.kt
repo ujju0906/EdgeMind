@@ -9,7 +9,9 @@ import com.ml.shubham0204.docqa.data.RetrievedContext
 import com.ml.shubham0204.docqa.domain.embeddings.SentenceEmbeddingProvider
 import com.ml.shubham0204.docqa.domain.llm.AppLLMProvider
 import com.ml.shubham0204.docqa.domain.llm.LLMFactory
+import com.ml.shubham0204.docqa.domain.llm.LLMInitializationState
 import com.ml.shubham0204.docqa.domain.llm.LLMProvider
+import com.ml.shubham0204.docqa.domain.sms.SmsReader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +27,7 @@ class ChatViewModel(
     private val geminiAPIKey: GeminiAPIKey,
     private val sentenceEncoder: SentenceEmbeddingProvider,
     private val llmFactory: LLMFactory,
+    private val smsReader: SmsReader
 ) : ViewModel() {
 
     private val _questionState = MutableStateFlow("")
@@ -38,8 +41,17 @@ class ChatViewModel(
 
     val isModelInitialized = AppLLMProvider.isInitialized
 
+    val llmInitializationState = AppLLMProvider.initializationState
+
+    private val _isSmsContextEnabled = MutableStateFlow(false)
+    val isSmsContextEnabled: StateFlow<Boolean> = _isSmsContextEnabled
+
     private val _retrievedContextListState = MutableStateFlow(emptyList<RetrievedContext>())
     val retrievedContextListState: StateFlow<List<RetrievedContext>> = _retrievedContextListState
+
+    fun toggleSmsContext() {
+        _isSmsContextEnabled.value = !_isSmsContextEnabled.value
+    }
 
     fun getAnswer(
         query: String,
@@ -51,21 +63,43 @@ class ChatViewModel(
         try {
             var jointContext = ""
             val retrievedContextList = ArrayList<RetrievedContext>()
-            Log.d("AppPerformance", "Starting: Encode query and retrieve context")
-            val queryStartTime = System.currentTimeMillis()
-            val queryEmbedding = sentenceEncoder.encodeText(query)
-            chunksDB.getSimilarChunks(queryEmbedding, n = 5).forEach {
-                jointContext += " " + it.second.chunkData
-                retrievedContextList.add(RetrievedContext(it.second.docFileName, it.second.chunkData))
+
+            if (_isSmsContextEnabled.value) {
+                val smsMessages = smsReader.readLastSmsMessages()
+                if (smsMessages.isNotEmpty()) {
+                    jointContext += "Recent SMS messages:\n"
+                    smsMessages.forEach { sms ->
+                        jointContext += "- ${sms.body}\n"
+                        retrievedContextList.add(
+                            RetrievedContext(fileName = sms.sender, context = sms.body)
+                        )
+                    }
+                }
+            } else {
+                Log.d("AppPerformance", "Starting: Encode query and retrieve context")
+                val queryStartTime = System.currentTimeMillis()
+                val queryEmbedding = sentenceEncoder.encodeText(query)
+                chunksDB.getSimilarChunks(queryEmbedding, n = 5).forEach {
+                    jointContext += " " + it.second.chunkData
+                    retrievedContextList.add(
+                        RetrievedContext(it.second.docFileName, it.second.chunkData)
+                    )
+                }
+                val queryEndTime = System.currentTimeMillis()
+                Log.d(
+                    "AppPerformance",
+                    "Finished: Encode query and retrieve context. Time taken: ${queryEndTime - queryStartTime}ms"
+                )
             }
-            val queryEndTime = System.currentTimeMillis()
-            Log.d("AppPerformance", "Finished: Encode query and retrieve context. Time taken: ${queryEndTime - queryStartTime}ms")
             _retrievedContextListState.value = retrievedContextList
             val inputPrompt = prompt.replace("\$CONTEXT", jointContext).replace("\$QUERY", query)
             val inferenceStartTime = System.currentTimeMillis()
             viewModelScope.launch {
                 try {
-                    val llm = AppLLMProvider.getInstance()
+                    val llm =
+                        (AppLLMProvider.initializationState.value as? LLMInitializationState.Initialized)
+                            ?.llmProvider
+                            ?: throw IllegalStateException("LLM not initialized")
 
                     var isFirstToken = true
                     llm.generateResponse(inputPrompt)

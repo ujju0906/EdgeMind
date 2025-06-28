@@ -30,7 +30,6 @@ class LocalLLMAPI(
                 LlmInferenceOptions.builder()
                     .setModelPath(modelPath)
                     .setMaxTokens(1024)
-                /*    .setMaxTopK(40) */
                     .build()
 
             // Create an instance of the LLM Inference task
@@ -55,16 +54,15 @@ class LocalLLMAPI(
                 // Generate response using the local model
                 llmInference!!.generateResponseAsync(
                     prompt,
-                    { partialResult, done ->
-                        trySend(partialResult)
-                        if (done) {
-                            channel.close()
-                        }
-                    },
-                )
+                ) { partialResult: String?, done: Boolean ->
+                    partialResult?.let { trySend(it) }
+                    if (done) {
+                        close()
+                    }
+                }
             } catch (e: Exception) {
                 Log.e("LocalLLMAPI", "Error generating response: ${e.message}", e)
-                channel.close(e)
+                close(e)
             }
 
             awaitClose {}
