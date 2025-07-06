@@ -101,6 +101,8 @@ fun ChatScreen(
         val isCallLogContextEnabled by chatViewModel.isCallLogContextEnabled.collectAsState()
         var showCallLogSettingsDialog by remember { mutableStateOf(false) }
 
+        val isDocumentContextEnabled by chatViewModel.isDocumentContextEnabled.collectAsState()
+
         if (showSmsSettingsDialog) {
             AlertDialog(
                 onDismissRequest = { showSmsSettingsDialog = false },
@@ -244,6 +246,19 @@ fun ChatScreen(
                                 imageVector = Icons.Default.Phone,
                                 contentDescription = "Toggle Call Log Context",
                                 tint = if (isCallLogContextEnabled) Color.Green else Color.Gray
+                            )
+                        }
+
+                        // Document Context Toggle
+                        IconButton(
+                            onClick = {
+                                chatViewModel.toggleDocumentContext()
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Toggle Document Context",
+                                tint = if (isDocumentContextEnabled) Color.Green else Color.Gray
                             )
                         }
 
@@ -436,9 +451,9 @@ fun ChatScreen(
                             enabled = !isGeneratingResponse && isLlmReady,
                             onClick = {
                                 keyboardController?.hide()
-                                if (!chatViewModel.checkNumDocuments()) {
+                                if (isDocumentContextEnabled && !chatViewModel.checkNumDocuments()) {
                                     Toast
-                                        .makeText(context, "Add documents to execute queries", Toast.LENGTH_LONG)
+                                        .makeText(context, "Add documents to execute queries when document context is enabled", Toast.LENGTH_LONG)
                                         .show()
                                     return@IconButton
                                 }

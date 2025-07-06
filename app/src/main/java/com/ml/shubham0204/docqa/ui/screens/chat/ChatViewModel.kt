@@ -57,6 +57,9 @@ class ChatViewModel(
     private val _isCallLogContextEnabled = MutableStateFlow(false)
     val isCallLogContextEnabled: StateFlow<Boolean> = _isCallLogContextEnabled
 
+    private val _isDocumentContextEnabled = MutableStateFlow(false)
+    val isDocumentContextEnabled: StateFlow<Boolean> = _isDocumentContextEnabled
+
     private val _retrievedContextListState = MutableStateFlow(emptyList<RetrievedContext>())
     val retrievedContextListState: StateFlow<List<RetrievedContext>> = _retrievedContextListState
 
@@ -66,6 +69,10 @@ class ChatViewModel(
 
     fun toggleCallLogContext() {
         _isCallLogContextEnabled.value = !_isCallLogContextEnabled.value
+    }
+
+    fun toggleDocumentContext() {
+        _isDocumentContextEnabled.value = !_isDocumentContextEnabled.value
     }
 
     fun getAnswer(
@@ -118,7 +125,7 @@ class ChatViewModel(
                     }
                 }
 
-                if (!(_isSmsContextEnabled.value || _isCallLogContextEnabled.value)) {
+                if (_isDocumentContextEnabled.value) {
                     Log.d("AppPerformance", "Starting: Encode query and retrieve context")
                     val queryStartTime = System.currentTimeMillis()
                     val queryEmbedding = sentenceEncoder.encodeText(query)
