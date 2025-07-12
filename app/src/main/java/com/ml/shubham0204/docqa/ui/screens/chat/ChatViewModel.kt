@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.launch
 import android.util.Log
+import kotlinx.coroutines.Job
 
 class ChatViewModel(
     private val documentsDB: DocumentsDB,
@@ -66,6 +67,9 @@ class ChatViewModel(
     private val _retrievedContextListState = MutableStateFlow(emptyList<RetrievedContext>())
     val retrievedContextListState: StateFlow<List<RetrievedContext>> = _retrievedContextListState
 
+    // Job reference for cancelling response generation
+    private var generationJob: Job? = null
+
     fun toggleSmsContext() {
         _isSmsContextEnabled.value = !_isSmsContextEnabled.value
     }
@@ -82,11 +86,21 @@ class ChatViewModel(
         _isActionExecutorEnabled.value = !_isActionExecutorEnabled.value
     }
 
+    fun stopGeneration() {
+        generationJob?.cancel()
+        generationJob = null
+        _isGeneratingResponseState.value = false
+        Log.d("ChatViewModel", "Response generation stopped by user")
+    }
+
     fun getAnswer(
         query: String,
         prompt: String,
     ) {
-        viewModelScope.launch {
+        // Cancel any existing generation job
+        stopGeneration()
+        
+        generationJob = viewModelScope.launch {
             if (_isActionExecutorEnabled.value) {
                 val action = actionMatcher.findBestAction(query)
                 if (action != null) {
@@ -161,13 +175,18 @@ class ChatViewModel(
 
                     var isFirstToken = true
                     llm.generateResponse(inputPrompt)
-                        .catch {
+                        .catch { e ->
                             _isGeneratingResponseState.value = false
-                            _questionState.value = ""
-                            throw it
+                            if (e !is kotlinx.coroutines.CancellationException) {
+                                _questionState.value = ""
+                                throw e
+                            }
                         }
-                        .onCompletion {
+                        .onCompletion { cause ->
                             _isGeneratingResponseState.value = false
+                            if (cause is kotlinx.coroutines.CancellationException) {
+                                Log.d("ChatViewModel", "Response generation was cancelled")
+                            }
                         }
                         .collect { response ->
                             if (isFirstToken) {
@@ -182,13 +201,17 @@ class ChatViewModel(
                         }
                 } catch (e: Exception) {
                     _isGeneratingResponseState.value = false
-                    _questionState.value = ""
-                    throw e
+                    if (e !is kotlinx.coroutines.CancellationException) {
+                        _questionState.value = ""
+                        throw e
+                    }
                 }
             } catch (e: Exception) {
                 _isGeneratingResponseState.value = false
-                _questionState.value = ""
-                throw e
+                if (e !is kotlinx.coroutines.CancellationException) {
+                    _questionState.value = ""
+                    throw e
+                }
             }
         }
     }
@@ -203,5 +226,7 @@ class ChatViewModel(
 
     override fun onCleared() {
         super.onCleared()
+        // Cancel any ongoing generation when the ViewModel is cleared
+        stopGeneration()
     }
 }

@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -83,6 +84,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import android.provider.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
+import kotlinx.coroutines.Job
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -460,50 +462,64 @@ fun ChatScreen(
 
                         Spacer(modifier = Modifier.width(4.dp))
 
-                        IconButton(
-                            modifier = Modifier.background(Color.Blue, CircleShape),
-                            enabled = !isGeneratingResponse && isLlmReady,
-                            onClick = {
-                                keyboardController?.hide()
-                                if (isDocumentContextEnabled && !chatViewModel.checkNumDocuments()) {
-                                    Toast
-                                        .makeText(context, "Add documents to execute queries when document context is enabled", Toast.LENGTH_LONG)
-                                        .show()
-                                    return@IconButton
+                        // Stop button (when generating)
+                        if (isGeneratingResponse) {
+                            IconButton(
+                                modifier = Modifier.background(Color.Red, CircleShape),
+                                onClick = {
+                                    chatViewModel.stopGeneration()
                                 }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Stop,
+                                    contentDescription = "Stop Generation",
+                                    tint = Color.White,
+                                )
+                            }
+                        } else {
+                            // Send button (when not generating)
+                            IconButton(
+                                modifier = Modifier.background(Color.Blue, CircleShape),
+                                enabled = isLlmReady,
+                                onClick = {
+                                    keyboardController?.hide()
+                                    if (isDocumentContextEnabled && !chatViewModel.checkNumDocuments()) {
+                                        Toast
+                                            .makeText(context, "Add documents to execute queries when document context is enabled", Toast.LENGTH_LONG)
+                                            .show()
+                                        return@IconButton
+                                    }
 
-                                // Check if any LLM is available (local or remote)
-                                if (!chatViewModel.isLocalModelAvailable() && !chatViewModel.isRemoteModelAvailable()) {
-                                    createAlertDialog(
-                                        dialogTitle = "No LLM Available",
-                                        dialogText = "Please download a local model or configure a Gemini API key to use the app.",
-                                        dialogPositiveButtonText = "Download Local Model",
-                                        onPositiveButtonClick = onModelDownloadClick,
-                                        dialogNegativeButtonText = "Add API Key",
-                                        onNegativeButtonClick = onEditAPIKeyClick,
-                                    )
-                                    return@IconButton
-                                }
+                                    // Check if any LLM is available (local or remote)
+                                    if (!chatViewModel.isLocalModelAvailable() && !chatViewModel.isRemoteModelAvailable()) {
+                                        createAlertDialog(
+                                            dialogTitle = "No LLM Available",
+                                            dialogText = "Please download a local model or configure a Gemini API key to use the app.",
+                                            dialogPositiveButtonText = "Download Local Model",
+                                            onPositiveButtonClick = onModelDownloadClick,
+                                            dialogNegativeButtonText = "Add API Key",
+                                            onNegativeButtonClick = onEditAPIKeyClick,
+                                        )
+                                        return@IconButton
+                                    }
 
-                                if (questionText.trim().isEmpty()) {
-                                    Toast.makeText(context, "Enter a query to execute", Toast.LENGTH_LONG).show()
-                                    return@IconButton
+                                    if (questionText.trim().isEmpty()) {
+                                        Toast.makeText(context, "Enter a query to execute", Toast.LENGTH_LONG).show()
+                                        return@IconButton
+                                    }
+                                    try {
+                                        chatViewModel.getAnswer(
+                                            questionText,
+                                            context.getString(R.string.prompt_1),
+                                        )
+                                    } catch (e: Exception) {
+                                        Log.e("ChatScreen", "Failed to get answer", e)
+                                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                                    } finally {
+                                        questionText = ""
+                                    }
                                 }
-                                try {
-                                    chatViewModel.getAnswer(
-                                        questionText,
-                                        context.getString(R.string.prompt_1),
-                                    )
-                                } catch (e: Exception) {
-                                    Log.e("ChatScreen", "Failed to get answer", e)
-                                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
-                                } finally {
-                                    questionText = ""
-                                }
-                            }) {
-                            if (isGeneratingResponse) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
-                            } else {
+                            ) {
                                 Icon(
                                     imageVector = Icons.Default.Send,
                                     contentDescription = "Send",
