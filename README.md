@@ -57,6 +57,23 @@ The app now supports two LLM modes:
 
 The app automatically chooses the best available option and provides visual feedback about which mode is active.
 
+## Background Downloads
+
+The app now supports background model downloads with the following features:
+
+- **Foreground Service**: Downloads continue even when the app is in the background
+- **Progress Notifications**: Real-time progress updates in the notification panel
+- **Download Management**: Cancel downloads at any time and resume later
+- **Optimized Performance**: Larger buffer sizes and connection optimizations for faster downloads
+- **Permission Handling**: Automatic notification permission requests for Android 13+
+
+### How it works:
+1. When you start a download, the app creates a foreground service with a persistent notification
+2. The download continues in the background even if you switch to other apps
+3. Progress is shown both in the app and in the notification panel
+4. You can cancel the download at any time using the cancel button
+5. If the download is interrupted, you can restart it from where it left off
+
 ## Tools
 
 1. [Apache POI](https://poi.apache.org/) and [iTextPDF](https://github.com/itext/itextpdf) for parsing DOCX and PDF documents

@@ -13,6 +13,8 @@ class LocalLLMAPI(
     private val modelManager: ModelManager
 ) : LLMProvider {
     private var llmInference: LlmInference? = null
+    private var isGenerating = false
+    private var isCancelled = false
 
     override suspend fun init() {
         if (llmInference != null) {
@@ -48,6 +50,11 @@ class LocalLLMAPI(
                 if (llmInference == null) {
                     throw IllegalStateException("LLM not initialized. Call init() first.")
                 }
+                
+                // Reset cancellation state for new generation
+                isCancelled = false
+                isGenerating = true
+                
                 Log.d("AppPerformance", "Starting: Local LLM Inference")
                 Log.d("LocalLLMAPI", "Generating response for prompt: $prompt")
 
@@ -55,21 +62,48 @@ class LocalLLMAPI(
                 llmInference!!.generateResponseAsync(
                     prompt,
                 ) { partialResult: String?, done: Boolean ->
+                    if (isCancelled) {
+                        // Generation was cancelled
+                        close()
+                        return@generateResponseAsync
+                    }
+                    
                     partialResult?.let { trySend(it) }
                     if (done) {
+                        isGenerating = false
                         close()
                     }
                 }
             } catch (e: Exception) {
                 Log.e("LocalLLMAPI", "Error generating response: ${e.message}", e)
+                isGenerating = false
                 close(e)
             }
 
-            awaitClose {}
+            awaitClose {
+                isGenerating = false
+            }
         }
+
+    override fun stopGeneration() {
+        Log.d("LocalLLMAPI", "Stopping generation")
+        isCancelled = true
+        isGenerating = false
+        
+        // Reset the LLM inference instance to ensure clean state for next generation
+        try {
+            llmInference?.close()
+            llmInference = null
+            Log.d("LocalLLMAPI", "LLM instance reset after cancellation")
+        } catch (e: Exception) {
+            Log.e("LocalLLMAPI", "Error resetting LLM after cancellation: ${e.message}", e)
+        }
+    }
 
     override fun close() {
         try {
+            isGenerating = false
+            isCancelled = true
             llmInference?.close()
             llmInference = null
             Log.d("LocalLLMAPI", "LLM closed successfully")

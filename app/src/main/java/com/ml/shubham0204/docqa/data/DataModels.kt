@@ -22,6 +22,16 @@ data class Document(
     var docAddedTime: Long = 0,
 )
 
+@Entity
+data class ChatMessage(
+    @Id var messageId: Long = 0,
+    var question: String = "",
+    var response: String = "",
+    var timestamp: Long = 0,
+    var isUserMessage: Boolean = true,
+    var contextUsed: String = "", // Store what context was used (SMS, Call Logs, Documents)
+)
+
 data class RetrievedContext(
     val fileName: String,
     val context: String,

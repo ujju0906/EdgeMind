@@ -4,6 +4,8 @@ import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ml.shubham0204.docqa.data.ChunksDB
+import com.ml.shubham0204.docqa.data.ChatHistoryDB
+import com.ml.shubham0204.docqa.data.ChatMessage
 import com.ml.shubham0204.docqa.data.DocumentsDB
 import com.ml.shubham0204.docqa.data.GeminiAPIKey
 import com.ml.shubham0204.docqa.data.RetrievedContext
@@ -25,11 +27,13 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import android.util.Log
 
 class ChatViewModel(
     private val documentsDB: DocumentsDB,
     private val chunksDB: ChunksDB,
+    private val chatHistoryDB: ChatHistoryDB,
     private val geminiAPIKey: GeminiAPIKey,
     private val sentenceEncoder: SentenceEmbeddingProvider,
     private val llmFactory: LLMFactory,
@@ -63,6 +67,22 @@ class ChatViewModel(
     private val _retrievedContextListState = MutableStateFlow(emptyList<RetrievedContext>())
     val retrievedContextListState: StateFlow<List<RetrievedContext>> = _retrievedContextListState
 
+    private val _chatHistoryState = MutableStateFlow(emptyList<ChatMessage>())
+    val chatHistoryState: StateFlow<List<ChatMessage>> = _chatHistoryState
+
+    private val _actionsEnabled = MutableStateFlow(false)
+    val actionsEnabled: StateFlow<Boolean> = _actionsEnabled
+
+    fun toggleActionsEnabled() {
+        _actionsEnabled.value = !_actionsEnabled.value
+    }
+
+    private var currentLLMProvider: LLMProvider? = null
+
+    init {
+        loadChatHistory()
+    }
+
     fun toggleSmsContext() {
         _isSmsContextEnabled.value = !_isSmsContextEnabled.value
     }
@@ -75,53 +95,125 @@ class ChatViewModel(
         _isDocumentContextEnabled.value = !_isDocumentContextEnabled.value
     }
 
+    fun stopGeneration() {
+        Log.d("ChatViewModel", "Stopping generation")
+        currentLLMProvider?.stopGeneration()
+        currentLLMProvider = null
+        _isGeneratingResponseState.value = false
+        
+        // Add a small delay to ensure proper cleanup
+        viewModelScope.launch {
+            delay(100) // Small delay to ensure LLM is properly reset
+        }
+        
+        // Clear the response state to indicate cancellation
+        if (_responseState.value.isNotEmpty()) {
+            _responseState.value += "\n\n[Response stopped by user"
+        }
+    }
+
     fun getAnswer(
         query: String,
         prompt: String,
     ) {
+        // Prevent multiple simultaneous generations
+        if (_isGeneratingResponseState.value) {
+            Log.d("ChatViewModel", "Generation already in progress, ignoring new request")
+            return
+        }
+        
         viewModelScope.launch {
             val action = actionMatcher.findBestAction(query)
             if (action != null) {
-                val response = actionMatcher.executeAction(action, query)
-                if (action.showInChat) {
+                if (!_actionsEnabled.value) {
+                    // Actions are disabled, show message in chat
+                    chatHistoryDB.saveUserMessage(query)
+                    chatHistoryDB.saveMessage(query, "[Actions are currently disabled. Enable actions to use this feature.]", "Action: Blocked")
+                    loadChatHistory()
                     _questionState.value = query
-                    _responseState.value = response
+                    _responseState.value = "[Actions are currently disabled. Enable actions to use this feature.]"
+                    return@launch
                 }
+                chatHistoryDB.saveUserMessage(query)
+                chatHistoryDB.saveMessage(query, actionMatcher.executeAction(action, query), "Action: ${action.javaClass.simpleName}")
+                loadChatHistory()
+                _questionState.value = query
+                _responseState.value = actionMatcher.executeAction(action, query)
                 return@launch
             }
 
+            // Immediately add user message to chat history
+            chatHistoryDB.saveUserMessage(query)
+            loadChatHistory()
             _questionState.value = query
             _responseState.value = ""
             _isGeneratingResponseState.value = true
+            
+            // Add a pending assistant message to chat history
+            var assistantMessageId: Long? = null
+            viewModelScope.launch {
+                val pendingMessage = ChatMessage(
+                    question = query,
+                    response = "",
+                    timestamp = System.currentTimeMillis(),
+                    isUserMessage = false,
+                    contextUsed = ""
+                )
+                assistantMessageId = chatHistoryDB.saveStreamingAssistantMessage(pendingMessage)
+                loadChatHistory()
+            }
+
             try {
                 var jointContext = ""
                 val retrievedContextList = ArrayList<RetrievedContext>()
+                
+                // Build context with proper error handling
+                try {
 
                 if (_isSmsContextEnabled.value) {
-                    val smsMessages = smsReader.readLastSmsMessages()
-                    if (smsMessages.isNotEmpty()) {
-                        jointContext += "Recent SMS messages:\n"
-                        smsMessages.forEach { sms ->
-                            jointContext += "- ${sms.body}\n"
-                            retrievedContextList.add(
-                                RetrievedContext(fileName = sms.sender, context = sms.body)
-                            )
+                    try {
+                        if (smsReader.hasPermission()) {
+                            val smsMessages = smsReader.readLastSmsMessages()
+                            if (smsMessages.isNotEmpty()) {
+                                jointContext += "Recent SMS messages:\n"
+                                smsMessages.forEach { sms ->
+                                    val smsInfo = "From: ${sms.sender}, Date: ${sms.formattedDate}, Time: ${sms.formattedTime}, Message: ${sms.body}"
+                                    jointContext += "- $smsInfo\n"
+                                    retrievedContextList.add(
+                                        RetrievedContext(fileName = sms.sender, context = smsInfo)
+                                    )
+                                }
+                            }
+                        } else {
+                            Log.w("ChatViewModel", "SMS permission not granted")
                         }
+                    } catch (e: Exception) {
+                        Log.e("ChatViewModel", "Error reading SMS messages: ${e.message}", e)
+                        // Continue without SMS if there's an error
                     }
                 }
                 if (_isCallLogContextEnabled.value) {
-                    val callLogs = callLogsReader.readLastCallLogs()
-                    if (callLogs.isNotEmpty()) {
-                        jointContext += "Recent call logs:\n"
-                        callLogs.forEach { call ->
-                            val callName = call.name ?: "Unknown"
-                            val callInfo =
-                                "Name: $callName, Number: ${call.number}, Type: ${call.type}, Duration: ${call.duration}s"
-                            jointContext += "- $callInfo\n"
-                            retrievedContextList.add(
-                                RetrievedContext(fileName = "Call Log", context = callInfo)
-                            )
+                    try {
+                        if (callLogsReader.hasPermission()) {
+                            val callLogs = callLogsReader.readLastCallLogs()
+                            if (callLogs.isNotEmpty()) {
+                                jointContext += "Recent call logs:\n"
+                                callLogs.forEach { call ->
+                                    val callName = call.name ?: "Unknown"
+                                    val callInfo =
+                                        "Name: $callName, Number: ${call.number}, Type: ${call.type}, Date: ${call.formattedDate}, Time: ${call.formattedTime}, Duration: ${call.formattedDuration}"
+                                    jointContext += "- $callInfo\n"
+                                    retrievedContextList.add(
+                                        RetrievedContext(fileName = "Call Log", context = callInfo)
+                                    )
+                                }
+                            }
+                        } else {
+                            Log.w("ChatViewModel", "Call log permission not granted")
                         }
+                    } catch (e: Exception) {
+                        Log.e("ChatViewModel", "Error reading call logs: ${e.message}", e)
+                        // Continue without call logs if there's an error
                     }
                 }
 
@@ -141,6 +233,13 @@ class ChatViewModel(
                         "Finished: Encode query and retrieve context. Time taken: ${queryEndTime - queryStartTime}ms"
                     )
                 }
+                
+                } catch (e: Exception) {
+                    Log.e("ChatViewModel", "Error building context: ${e.message}", e)
+                    // Continue with empty context if there's an error
+                    jointContext = "No additional context available due to an error."
+                }
+                
                 _retrievedContextListState.value = retrievedContextList
                 val inputPrompt = prompt.replace("\$CONTEXT", jointContext).replace("\$QUERY", query)
                 val inferenceStartTime = System.currentTimeMillis()
@@ -150,15 +249,26 @@ class ChatViewModel(
                             ?.llmProvider
                             ?: throw IllegalStateException("LLM not initialized")
 
+                    currentLLMProvider = llm
+
                     var isFirstToken = true
+                    var streamingResponse = ""
                     llm.generateResponse(inputPrompt)
                         .catch {
                             _isGeneratingResponseState.value = false
                             _questionState.value = ""
+                            currentLLMProvider = null
                             throw it
                         }
                         .onCompletion {
                             _isGeneratingResponseState.value = false
+                            currentLLMProvider = null
+                            // Finalize the assistant message in chat history (do not create a new one)
+                            if (assistantMessageId != null && streamingResponse.isNotEmpty()) {
+                                val contextUsed = buildContextUsedString()
+                                chatHistoryDB.updateAssistantMessage(assistantMessageId!!, streamingResponse, contextUsed)
+                                loadChatHistory()
+                            }
                         }
                         .collect { response ->
                             if (isFirstToken) {
@@ -169,16 +279,24 @@ class ChatViewModel(
                                 )
                                 isFirstToken = false
                             }
-                            _responseState.value += response
+                            streamingResponse += response
+                            _responseState.value = streamingResponse
+                            // Update the assistant message in chat history
+                            if (assistantMessageId != null) {
+                                chatHistoryDB.updateAssistantMessage(assistantMessageId!!, streamingResponse, "")
+                                loadChatHistory()
+                            }
                         }
                 } catch (e: Exception) {
                     _isGeneratingResponseState.value = false
                     _questionState.value = ""
+                    currentLLMProvider = null
                     throw e
                 }
             } catch (e: Exception) {
                 _isGeneratingResponseState.value = false
                 _questionState.value = ""
+                currentLLMProvider = null
                 throw e
             }
         }
@@ -188,11 +306,71 @@ class ChatViewModel(
 
     fun checkValidAPIKey(): Boolean = geminiAPIKey.getAPIKey() != null
 
+    private fun loadChatHistory() {
+        viewModelScope.launch {
+            try {
+                val messages = chatHistoryDB.getRecentMessages(100)
+                _chatHistoryState.value = messages
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Error loading chat history: ${e.message}", e)
+            }
+        }
+    }
+
+    fun clearChatHistory() {
+        viewModelScope.launch {
+            try {
+                chatHistoryDB.clearAllMessages()
+                _chatHistoryState.value = emptyList()
+                _questionState.value = ""
+                _responseState.value = ""
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Error clearing chat history: ${e.message}", e)
+            }
+        }
+    }
+
+    fun deleteMessage(messageId: Long) {
+        viewModelScope.launch {
+            try {
+                chatHistoryDB.deleteMessage(messageId)
+                loadChatHistory() // Reload the history
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Error deleting message: ${e.message}", e)
+            }
+        }
+    }
+
+    fun searchChatHistory(query: String) {
+        viewModelScope.launch {
+            try {
+                val results = chatHistoryDB.searchMessages(query)
+                _chatHistoryState.value = results
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Error searching chat history: ${e.message}", e)
+            }
+        }
+    }
+
+    fun resetChatHistory() {
+        loadChatHistory()
+    }
+
+    private fun buildContextUsedString(): String {
+        val contexts = mutableListOf<String>()
+        if (_isSmsContextEnabled.value) contexts.add("SMS")
+        if (_isCallLogContextEnabled.value) contexts.add("Call Logs")
+        if (_isDocumentContextEnabled.value) contexts.add("Documents")
+        return if (contexts.isNotEmpty()) contexts.joinToString(", ") else "No context"
+    }
+
     fun isLocalModelAvailable(): Boolean = llmFactory.isLocalModelAvailable()
 
     fun isRemoteModelAvailable(): Boolean = llmFactory.isRemoteModelAvailable()
 
     override fun onCleared() {
         super.onCleared()
+        currentLLMProvider?.stopGeneration()
+        currentLLMProvider = null
     }
 }

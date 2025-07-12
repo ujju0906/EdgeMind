@@ -13,6 +13,7 @@ class ActionMatcher(
 
     private var actions = getPredefinedActions(context)
     private val similarityThreshold = 0.7f
+    private val appActionSimilarityThreshold = 0.5f // Lower threshold for app actions
 
     init {
         CoroutineScope(Dispatchers.IO).launch {
@@ -45,7 +46,14 @@ class ActionMatcher(
             }
         }
 
-        return if (maxSimilarity > similarityThreshold) {
+        // Use different thresholds based on action type
+        val threshold = if (bestAction?.id == "open_application") {
+            appActionSimilarityThreshold
+        } else {
+            similarityThreshold
+        }
+
+        return if (maxSimilarity > threshold) {
             bestAction
         } else {
             null

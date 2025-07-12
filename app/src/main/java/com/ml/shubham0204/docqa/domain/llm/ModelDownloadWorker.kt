@@ -1,8 +1,13 @@
 package com.ml.shubham0204.docqa.domain.llm
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
+import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import kotlinx.coroutines.Dispatchers
@@ -10,6 +15,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.net.URL
+import java.net.HttpURLConnection
 
 class ModelDownloadWorker(
     appContext: Context,
@@ -22,10 +28,25 @@ class ModelDownloadWorker(
         const val MODEL_URL = "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.task?download=true"
         const val MODEL_FILENAME = "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.task"
         const val MODEL_DIR_NAME = "llm"
+        // Increased buffer size for better performance
+        private const val BUFFER_SIZE = 64 * 1024 // 64KB buffer
+        private const val CONNECT_TIMEOUT = 30000 // 30 seconds
+        private const val READ_TIMEOUT = 60000 // 60 seconds
+        
+        // Notification constants
+        private const val NOTIFICATION_ID = 1001
+        private const val CHANNEL_ID = "model_download_channel"
+        private const val CHANNEL_NAME = "Model Download"
     }
 
     override suspend fun doWork(): Result {
         return try {
+            // Create notification channel for Android O and above
+            createNotificationChannel()
+            
+            // Start foreground service with notification
+            setForeground(createForegroundInfo(0))
+            
             val modelDir = File(applicationContext.filesDir, MODEL_DIR_NAME)
             val modelFile = File(modelDir, MODEL_FILENAME)
             downloadModelWithProgress(modelFile.absolutePath)
@@ -51,14 +72,24 @@ class ModelDownloadWorker(
 
             Log.d(TAG, "Starting model download with progress tracking...")
             val url = URL(MODEL_URL)
-            val connection = url.openConnection()
+            val connection = url.openConnection() as HttpURLConnection
+            
+            // Optimize connection settings for faster downloads
+            connection.connectTimeout = CONNECT_TIMEOUT
+            connection.readTimeout = READ_TIMEOUT
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Android) DocQA-App")
+            connection.setRequestProperty("Accept", "*/*")
+            connection.setRequestProperty("Accept-Encoding", "gzip, deflate")
+            connection.setRequestProperty("Connection", "keep-alive")
+            
             val contentLength = connection.contentLengthLong
             val inputStream = connection.getInputStream()
             val outputStream = FileOutputStream(tempModelFile)
 
-            val buffer = ByteArray(8192)
+            val buffer = ByteArray(BUFFER_SIZE)
             var bytesRead: Int
             var totalBytesRead = 0L
+            var lastProgressUpdate = 0L
 
             while (inputStream.read(buffer).also { bytesRead = it } != -1) {
                 outputStream.write(buffer, 0, bytesRead)
@@ -66,14 +97,23 @@ class ModelDownloadWorker(
 
                 if (contentLength > 0) {
                     val progress = (totalBytesRead * 100 / contentLength).toInt()
-                    setProgress(workDataOf(KEY_PROGRESS to progress))
+                    // Update progress less frequently to reduce overhead
+                    if (progress > lastProgressUpdate || totalBytesRead == contentLength) {
+                        setProgress(workDataOf(KEY_PROGRESS to progress))
+                        // Update foreground notification with progress
+                        setForeground(createForegroundInfo(progress))
+                        lastProgressUpdate = progress.toLong()
+                    }
                 }
             }
 
             outputStream.close()
             inputStream.close()
+            connection.disconnect()
+            
             tempModelFile.renameTo(finalModelFile)
             setProgress(workDataOf(KEY_PROGRESS to 100))
+            setForeground(createForegroundInfo(100))
             Log.d(TAG, "Model download completed.")
 
         } catch (e: Exception) {
@@ -83,5 +123,38 @@ class ModelDownloadWorker(
             }
             throw e
         }
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Shows progress for model downloads"
+                setShowBadge(false)
+            }
+            
+            val notificationManager = applicationContext.getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun createForegroundInfo(progress: Int): ForegroundInfo {
+        val title = "Downloading AI Model"
+        val message = if (progress == 100) "Download completed!" else "Downloading... $progress%"
+        
+        val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setOngoing(true)
+            .setProgress(100, progress, false)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .build()
+
+        return ForegroundInfo(NOTIFICATION_ID, notification)
     }
 } 

@@ -8,11 +8,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.takeWhile
+import kotlinx.coroutines.flow.catch
 
 class GeminiRemoteAPI(
     private val apiKey: String,
 ) : LLMProvider {
     private var generativeModel: GenerativeModel? = null
+    private var isGenerating = false
+    private var isCancelled = false
 
     override suspend fun init() {
         Log.d("AppLifecycle", "GeminiRemoteAPI: Initializing client.")
@@ -41,11 +45,31 @@ class GeminiRemoteAPI(
     override fun generateResponse(prompt: String): Flow<String> {
         Log.d("AppPerformance", "Starting: Remote LLM Inference")
         Log.d("APP", "Prompt given: $prompt")
-        return generativeModel!!.generateContentStream(prompt).map { it.text ?: "" }
+        
+        // Reset cancellation state for new generation
+        isCancelled = false
+        isGenerating = true
+        
+        return generativeModel!!.generateContentStream(prompt)
+            .takeWhile { !isCancelled }
+            .map { it.text ?: "" }
+            .catch { e ->
+                Log.e("GeminiRemoteAPI", "Error in generation stream: ${e.message}", e)
+                isGenerating = false
+                throw e
+            }
+    }
+
+    override fun stopGeneration() {
+        Log.d("GeminiRemoteAPI", "Stopping generation")
+        isCancelled = true
+        isGenerating = false
     }
 
     override fun close() {
         // No cleanup needed for remote API
+        isGenerating = false
+        isCancelled = true
         generativeModel = null
     }
 }

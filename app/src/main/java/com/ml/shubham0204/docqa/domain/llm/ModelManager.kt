@@ -42,4 +42,37 @@ class ModelManager(private val context: Context) {
     fun getModelSizeInMB(): Float {
         return getModelSize() / (1024.0f * 1024.0f)
     }
+
+    suspend fun deleteModel(): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val modelDir = getModelDir()
+                val modelFile = File(modelDir, MODEL_FILENAME)
+                
+                if (modelFile.exists()) {
+                    val deleted = modelFile.delete()
+                    if (deleted) {
+                        Log.d(TAG, "Model file deleted successfully")
+                        
+                        // Also delete the model directory if it's empty
+                        if (modelDir.exists() && modelDir.listFiles()?.isEmpty() == true) {
+                            modelDir.delete()
+                            Log.d(TAG, "Model directory deleted")
+                        }
+                        
+                        true
+                    } else {
+                        Log.e(TAG, "Failed to delete model file")
+                        false
+                    }
+                } else {
+                    Log.d(TAG, "Model file does not exist")
+                    true // Consider it successful if file doesn't exist
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting model: ${e.message}", e)
+                false
+            }
+        }
+    }
 } 

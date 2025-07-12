@@ -1,8 +1,11 @@
 package com.ml.shubham0204.docqa.di
 
 import com.ml.shubham0204.docqa.data.ChunksDB
+import com.ml.shubham0204.docqa.data.ChatHistoryDB
+import com.ml.shubham0204.docqa.data.ChatMessage
 import com.ml.shubham0204.docqa.data.DocumentsDB
 import com.ml.shubham0204.docqa.data.GeminiAPIKey
+import com.ml.shubham0204.docqa.data.ObjectBoxStore
 import com.ml.shubham0204.docqa.domain.actions.ActionMatcher
 import com.ml.shubham0204.docqa.domain.embeddings.SentenceEmbeddingProvider
 import com.ml.shubham0204.docqa.domain.llm.LLMFactory
@@ -21,6 +24,7 @@ val appModule = module {
     // Data Layer
     single { DocumentsDB() }
     single { ChunksDB() }
+    single { ChatHistoryDB(ObjectBoxStore.store.boxFor(ChatMessage::class.java)) }
     single { GeminiAPIKey(androidContext()) }
 
     // Domain Layer
@@ -32,7 +36,7 @@ val appModule = module {
     single { ActionMatcher(get(), androidContext()) }
 
     // UI Layer (ViewModels)
-    viewModel { ChatViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { ChatViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { DocsViewModel(get(), get(), get()) }
     viewModel { ModelDownloadViewModel(get(), androidContext()) }
 }
