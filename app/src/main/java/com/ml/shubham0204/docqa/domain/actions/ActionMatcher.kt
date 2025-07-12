@@ -12,7 +12,7 @@ class ActionMatcher(
 ) {
 
     private var actions = getPredefinedActions(context)
-    private val similarityThreshold = 0.7f
+    private val similarityThreshold = 0.5f
 
     init {
         CoroutineScope(Dispatchers.IO).launch {

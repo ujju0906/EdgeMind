@@ -102,6 +102,7 @@ fun ChatScreen(
         var showCallLogSettingsDialog by remember { mutableStateOf(false) }
 
         val isDocumentContextEnabled by chatViewModel.isDocumentContextEnabled.collectAsState()
+        val isActionExecutorEnabled by chatViewModel.isActionExecutorEnabled.collectAsState()
 
         if (showSmsSettingsDialog) {
             AlertDialog(
@@ -259,6 +260,19 @@ fun ChatScreen(
                                 imageVector = Icons.Default.Search,
                                 contentDescription = "Toggle Document Context",
                                 tint = if (isDocumentContextEnabled) Color.Green else Color.Gray
+                            )
+                        }
+
+                        // Action Executor Toggle
+                        IconButton(
+                            onClick = {
+                                chatViewModel.toggleActionExecutor()
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = "Toggle Action Executor",
+                                tint = if (isActionExecutorEnabled) Color.Green else Color.Gray
                             )
                         }
 

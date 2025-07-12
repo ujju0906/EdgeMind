@@ -60,6 +60,9 @@ class ChatViewModel(
     private val _isDocumentContextEnabled = MutableStateFlow(false)
     val isDocumentContextEnabled: StateFlow<Boolean> = _isDocumentContextEnabled
 
+    private val _isActionExecutorEnabled = MutableStateFlow(false)
+    val isActionExecutorEnabled: StateFlow<Boolean> = _isActionExecutorEnabled
+
     private val _retrievedContextListState = MutableStateFlow(emptyList<RetrievedContext>())
     val retrievedContextListState: StateFlow<List<RetrievedContext>> = _retrievedContextListState
 
@@ -75,19 +78,25 @@ class ChatViewModel(
         _isDocumentContextEnabled.value = !_isDocumentContextEnabled.value
     }
 
+    fun toggleActionExecutor() {
+        _isActionExecutorEnabled.value = !_isActionExecutorEnabled.value
+    }
+
     fun getAnswer(
         query: String,
         prompt: String,
     ) {
         viewModelScope.launch {
-            val action = actionMatcher.findBestAction(query)
-            if (action != null) {
-                val response = actionMatcher.executeAction(action, query)
-                if (action.showInChat) {
-                    _questionState.value = query
-                    _responseState.value = response
+            if (_isActionExecutorEnabled.value) {
+                val action = actionMatcher.findBestAction(query)
+                if (action != null) {
+                    val response = actionMatcher.executeAction(action, query)
+                    if (action.showInChat) {
+                        _questionState.value = query
+                        _responseState.value = response
+                    }
+                    return@launch
                 }
-                return@launch
             }
 
             _questionState.value = query

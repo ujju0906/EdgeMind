@@ -20,11 +20,14 @@ data class AppAction(
 
 fun getPredefinedActions(context: Context): List<AppAction> {
     val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
-    val rearCameraId =
+    val rearCameraId = try {
         cameraManager.cameraIdList.find {
             cameraManager.getCameraCharacteristics(it).get(CameraCharacteristics.LENS_FACING) ==
                 CameraCharacteristics.LENS_FACING_BACK
         }
+    } catch (e: Exception) {
+        null // Handle case where camera access fails
+    }
 
     val actions =
         mutableListOf(
@@ -32,13 +35,43 @@ fun getPredefinedActions(context: Context): List<AppAction> {
                 id = "open_camera",
                 descriptions = listOf("Open camera", "Take a picture", "Launch camera"),
                 action = { ctx, _ ->
-                    val intent =
-                        Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                    try {
+                        // Check if camera permission is granted
+                        if (ctx.checkSelfPermission(android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                            // Open app settings to let user grant camera permission
+                            try {
+                                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                    data = android.net.Uri.fromParts("package", ctx.packageName, null)
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                ctx.startActivity(intent)
+                                Toast.makeText(ctx, "Please enable Camera permission and try again", Toast.LENGTH_LONG).show()
+                                return@AppAction "Opening app settings to enable camera permission"
+                            } catch (e: Exception) {
+                                Toast.makeText(ctx, "Camera permission is required. Please enable it in Settings → Apps → DocQA → Permissions", Toast.LENGTH_LONG).show()
+                                return@AppAction "Camera permission is required. Please enable it in Settings → Apps → DocQA → Permissions"
+                            }
+                        }
+                        
+                        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
-                    ctx.startActivity(intent)
-                    null
-                }
+                        
+                        // Check if there's a camera app that can handle this intent
+                        if (intent.resolveActivity(ctx.packageManager) != null) {
+                            ctx.startActivity(intent)
+                            null
+                        } else {
+                            Toast.makeText(ctx, "No camera app available", Toast.LENGTH_SHORT).show()
+                            "No camera app available"
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(ctx, "Failed to open camera: ${e.message}", Toast.LENGTH_SHORT).show()
+                        "Failed to open camera: ${e.message}"
+                    }
+                },
+                showInChat = true,
+                response = "Opening camera"
             ),
             AppAction(
                 id = "open_developer_settings",
