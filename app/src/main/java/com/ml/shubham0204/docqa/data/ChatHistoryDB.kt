@@ -6,14 +6,15 @@ import kotlinx.coroutines.withContext
 
 class ChatHistoryDB(private val box: Box<ChatMessage>) {
 
-    suspend fun saveMessage(question: String, response: String, contextUsed: String = "") {
+    suspend fun saveMessage(question: String, response: String, contextUsed: String = "", detailedContext: String = "") {
         withContext(Dispatchers.IO) {
             val message = ChatMessage(
                 question = question,
                 response = response,
                 timestamp = System.currentTimeMillis(),
                 isUserMessage = false,
-                contextUsed = contextUsed
+                contextUsed = contextUsed,
+                detailedContext = detailedContext
             )
             box.put(message)
         }
@@ -29,6 +30,7 @@ class ChatHistoryDB(private val box: Box<ChatMessage>) {
                 contextUsed = ""
             )
             box.put(message)
+            android.util.Log.d("ChatHistoryDB", "Saved user message: ${message.messageId} - ${message.question}")
         }
     }
 
@@ -43,11 +45,13 @@ class ChatHistoryDB(private val box: Box<ChatMessage>) {
 
     suspend fun getRecentMessages(limit: Int = 50): List<ChatMessage> {
         return withContext(Dispatchers.IO) {
-            val messages = box.query()
+            val allMessages = box.query()
                 .order(ChatMessage_.timestamp)
                 .build()
                 .find()
-            messages.takeLast(limit)
+            val recentMessages = allMessages.takeLast(limit)
+            android.util.Log.d("ChatHistoryDB", "Total messages in DB: ${allMessages.size}, returning ${recentMessages.size} recent messages")
+            recentMessages
         }
     }
 
@@ -88,17 +92,22 @@ class ChatHistoryDB(private val box: Box<ChatMessage>) {
     suspend fun saveStreamingAssistantMessage(message: ChatMessage): Long {
         return withContext(Dispatchers.IO) {
             box.put(message)
+            android.util.Log.d("ChatHistoryDB", "Saved streaming assistant message: ${message.messageId} - ${message.question}")
             message.messageId
         }
     }
 
-    suspend fun updateAssistantMessage(messageId: Long, response: String, contextUsed: String) {
+    suspend fun updateAssistantMessage(messageId: Long, response: String, contextUsed: String, detailedContext: String = "") {
         withContext(Dispatchers.IO) {
             val message = box.get(messageId)
             if (message != null) {
                 message.response = response
                 message.contextUsed = contextUsed
+                message.detailedContext = detailedContext
                 box.put(message)
+                android.util.Log.d("ChatHistoryDB", "Updated assistant message: $messageId with response length: ${response.length}")
+            } else {
+                android.util.Log.e("ChatHistoryDB", "Failed to find message with ID: $messageId")
             }
         }
     }

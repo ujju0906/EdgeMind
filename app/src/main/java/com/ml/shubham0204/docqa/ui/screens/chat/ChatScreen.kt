@@ -39,6 +39,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -126,6 +128,14 @@ fun ChatScreen(
         val response by chatViewModel.responseState.collectAsState()
         val isGeneratingResponse by chatViewModel.isGeneratingResponseState.collectAsState()
         val retrievedContextList by chatViewModel.retrievedContextListState.collectAsState()
+        
+        // Debug chat history state
+        LaunchedEffect(chatHistory) {
+            Log.d("ChatScreen", "Chat history updated: ${chatHistory.size} messages")
+            chatHistory.forEach { message ->
+                Log.d("ChatScreen", "Message: ${message.messageId} - ${if (message.isUserMessage) "USER" else "ASSISTANT"} - ${message.question}")
+            }
+        }
         
         // UI state
         var questionText by remember { mutableStateOf("") }
@@ -510,7 +520,9 @@ fun ChatScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        if (chatHistory.isEmpty() && !isGeneratingResponse) {
+                        Log.d("ChatScreen", "Chat history size: ${chatHistory.size}, isGeneratingResponse: $isGeneratingResponse")
+                        // Always show chat history section for debugging
+                        if (false && chatHistory.isEmpty() && !isGeneratingResponse) {
                             item {
                             Column(
                                     modifier = Modifier.fillMaxWidth().padding(32.dp),
@@ -552,12 +564,49 @@ fun ChatScreen(
                         } else {
                             // Display chat history
                             val filteredHistory = if (isGeneratingResponse && question.isNotEmpty()) {
-                                // Only show up to the latest user message and its streaming response
-                                val lastUserIndex = chatHistory.indexOfLast { it.isUserMessage && it.question == question }
-                                if (lastUserIndex != -1) chatHistory.take(lastUserIndex + 1) else chatHistory
+                                // Show all chat history but don't show the assistant message that's being streamed
+                                chatHistory.filter { !(it.isUserMessage == false && it.response.isEmpty()) }
                             } else {
                                 chatHistory
                             }
+                            Log.d("ChatScreen", "Displaying ${filteredHistory.size} messages from ${chatHistory.size} total messages")
+                            
+                            // Debug item to show current state
+                            if (filteredHistory.isEmpty()) {
+                                item {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = MaterialTheme.colorScheme.errorContainer
+                                        )
+                                    ) {
+                                        Column(modifier = Modifier.padding(16.dp)) {
+                                            Text(
+                                                text = "DEBUG: No messages to display. Chat history size: ${chatHistory.size}",
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            TextButton(
+                                                onClick = { 
+                                                    chatViewModel.debugChatHistory()
+                                                    chatViewModel.resetChatHistory()
+                                                }
+                                            ) {
+                                                Text("Reload Chat History", color = MaterialTheme.colorScheme.onErrorContainer)
+                                            }
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            TextButton(
+                                                onClick = { 
+                                                    chatViewModel.resetDatabase()
+                                                }
+                                            ) {
+                                                Text("Reset Database", color = MaterialTheme.colorScheme.onErrorContainer)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
                             items(filteredHistory) { message ->
                                 ChatMessageItem(
                                     message = message,
@@ -586,9 +635,11 @@ fun ChatScreen(
                             )
                             if (shouldShowStreaming) {
                                 item {
+                                    val currentContext by chatViewModel.currentContextState.collectAsState()
                                     StreamingResponseItem(
                                         question = question,
                                         response = response,
+                                        context = currentContext,
                                         onShare = {
                                             val shareText = "$question\n\n$response"
                                             val sendIntent = Intent().apply {
@@ -858,7 +909,62 @@ fun ChatMessageItem(
                             )
                         }
                     }
+                    
+                    // Show detailed context dropdown if available
+                    if (message.detailedContext.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        ContextDropdown(contextText = message.detailedContext)
+                    }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun ContextDropdown(contextText: String) {
+    var expanded by remember { mutableStateOf(false) }
+    
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+        ),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Context Used",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+                
+                IconButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        contentDescription = if (expanded) "Hide context" else "Show context",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
+            }
+            
+            if (expanded) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = contextText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }
@@ -868,9 +974,10 @@ fun ChatMessageItem(
 fun StreamingResponseItem(
     question: String,
     response: String,
+    context: String,
     onShare: () -> Unit
 ) {
-    val context = LocalContext.current
+    val localContext = LocalContext.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -933,12 +1040,18 @@ fun StreamingResponseItem(
                     onLinkClicked = { url ->
                         try {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                            context.startActivity(intent)
+                            localContext.startActivity(intent)
                         } catch (e: Exception) {
                             Log.e("ChatScreen", "Error opening link: $url", e)
                         }
                     }
                 )
+                
+                // Context dropdown
+                if (context.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    ContextDropdown(contextText = context)
+                }
             }
             
             // Typing indicator

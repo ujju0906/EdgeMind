@@ -30,6 +30,7 @@ data class ChatMessage(
     var timestamp: Long = 0,
     var isUserMessage: Boolean = true,
     var contextUsed: String = "", // Store what context was used (SMS, Call Logs, Documents)
+    var detailedContext: String = "", // Store the actual context content used for generation
 )
 
 data class RetrievedContext(

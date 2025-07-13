@@ -24,7 +24,11 @@ val appModule = module {
     // Data Layer
     single { DocumentsDB() }
     single { ChunksDB() }
-    single { ChatHistoryDB(ObjectBoxStore.store.boxFor(ChatMessage::class.java)) }
+    single { 
+        val chatHistoryDB = ChatHistoryDB(ObjectBoxStore.store.boxFor(ChatMessage::class.java))
+        android.util.Log.d("AppModule", "ChatHistoryDB created successfully")
+        chatHistoryDB
+    }
     single { GeminiAPIKey(androidContext()) }
 
     // Domain Layer

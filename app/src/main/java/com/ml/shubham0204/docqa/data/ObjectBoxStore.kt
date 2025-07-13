@@ -9,5 +9,6 @@ object ObjectBoxStore {
 
     fun init(context: Context) {
         store = MyObjectBox.builder().androidContext(context).build()
+        android.util.Log.d("ObjectBoxStore", "ObjectBox store initialized successfully")
     }
 }

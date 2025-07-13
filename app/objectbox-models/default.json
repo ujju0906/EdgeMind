@@ -72,7 +72,7 @@
     },
     {
       "id": "3:5233666523746207286",
-      "lastPropertyId": "6:5429939612298282499",
+      "lastPropertyId": "8:6203337804682410575",
       "name": "ChatMessage",
       "properties": [
         {
@@ -105,6 +105,11 @@
           "id": "6:5429939612298282499",
           "name": "contextUsed",
           "type": 9
+        },
+        {
+          "id": "8:6203337804682410575",
+          "name": "detailedContext",
+          "type": 9
         }
       ],
       "relations": []
@@ -118,7 +123,9 @@
   "modelVersionParserMinimum": 5,
   "retiredEntityUids": [],
   "retiredIndexUids": [],
-  "retiredPropertyUids": [],
+  "retiredPropertyUids": [
+    6822598813683523732
+  ],
   "retiredRelationUids": [],
   "version": 1
 }

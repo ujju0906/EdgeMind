@@ -31,7 +31,7 @@ class LocalLLMAPI(
             val taskOptions =
                 LlmInferenceOptions.builder()
                     .setModelPath(modelPath)
-                    .setMaxTokens(1024)
+                    .setMaxTokens(2048) // Increased from 1024 to handle longer inputs
                     .build()
 
             // Create an instance of the LLM Inference task

@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.ml.shubham0204.docqa"
-        minSdk = 26
+        minSdk = 29
         targetSdk = 35
         versionCode = 1
         versionName = "0.0.1"
@@ -21,10 +21,11 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        proguardFiles("proguard-rules.pro")
     }
     signingConfigs {
         create("release") {
-            storeFile = file("../keystore.jks")
+            storeFile = file("C:\\Users\\girid\\Desktop\\passcode\\raghavcode.jks")
             storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
             keyAlias = System.getenv("RELEASE_KEYSTORE_ALIAS")
             keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
@@ -55,6 +56,8 @@ android {
             excludes += "META-INF/DEPENDENCIES"
         }
     }
+    buildToolsVersion = "35.0.0"
+    ndkVersion = "27.2.12479018"
 }
 
 ksp {
