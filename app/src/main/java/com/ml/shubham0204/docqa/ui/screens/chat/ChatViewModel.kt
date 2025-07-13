@@ -279,7 +279,7 @@ class ChatViewModel(
                 
                 // If no context was built, provide a helpful message
                 if (jointContext.isEmpty()) {
-                    jointContext = "No context information is currently available. Please enable SMS, call logs, or document context to get more relevant responses."
+                    jointContext = ""
                 }
                 
                 _retrievedContextListState.value = retrievedContextList

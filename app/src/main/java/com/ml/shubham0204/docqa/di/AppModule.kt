@@ -42,5 +42,5 @@ val appModule = module {
     // UI Layer (ViewModels)
     viewModel { ChatViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { DocsViewModel(get(), get(), get()) }
-    viewModel { ModelDownloadViewModel(get(), androidContext()) }
+    viewModel { ModelDownloadViewModel(get(), androidContext(), get()) }
 }

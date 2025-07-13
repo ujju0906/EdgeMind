@@ -93,7 +93,6 @@ class LocalLLMAPI(
         // Reset the LLM inference instance to ensure clean state for next generation
         try {
             llmInference?.close()
-            llmInference = null
             Log.d("LocalLLMAPI", "LLM instance reset after cancellation")
         } catch (e: Exception) {
             Log.e("LocalLLMAPI", "Error resetting LLM after cancellation: ${e.message}", e)
@@ -105,7 +104,6 @@ class LocalLLMAPI(
             isGenerating = false
             isCancelled = true
             llmInference?.close()
-            llmInference = null
             Log.d("LocalLLMAPI", "LLM closed successfully")
         } catch (e: Exception) {
             Log.e("LocalLLMAPI", "Error closing LLM: ${e.message}", e)

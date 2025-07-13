@@ -27,6 +27,13 @@ object AppLLMProvider {
 
     fun initialize(factory: LLMFactory) {
         if (llmProvider != null || _initializationState.value == LLMInitializationState.Initializing) return
+
+        // If no model is available (neither local nor remote), don't attempt to initialize.
+        // The UI will handle this state and prompt the user to download a model or add an API key.
+        if (!factory.isLocalModelAvailable() && !factory.isRemoteModelAvailable()) {
+            return
+        }
+
         Log.d("AppLifecycle", "AppLLMProvider: Initialization started.")
         CoroutineScope(Dispatchers.IO).launch {
             try {

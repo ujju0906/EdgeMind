@@ -13,10 +13,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
 import java.util.UUID
+import com.ml.shubham0204.docqa.domain.llm.LLMFactory
+import com.ml.shubham0204.docqa.domain.llm.AppLLMProvider
 
 class ModelDownloadViewModel(
     private val modelManager: ModelManager,
-    private val context: Context
+    private val context: Context,
+    private val llmFactory: LLMFactory
 ) : ViewModel() {
     
     private val workManager = WorkManager.getInstance(context)
@@ -85,6 +88,10 @@ class ModelDownloadViewModel(
                         _downloadProgress.value = 1f
                         currentWorkId = null
                         checkModelStatus()
+                        
+                        // Re-initialize the LLM provider
+                        AppLLMProvider.close()
+                        AppLLMProvider.initialize(llmFactory)
                     }
                     WorkInfo.State.FAILED -> {
                         _downloadState.value = DownloadState.Error("Download failed")

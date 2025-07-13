@@ -3,9 +3,11 @@ package com.ml.shubham0204.docqa.domain.llm
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
@@ -41,15 +43,27 @@ class ModelDownloadWorker(
 
     override suspend fun doWork(): Result {
         return try {
-            // Create notification channel for Android O and above
-            createNotificationChannel()
-            
-            // Start foreground service with notification
-            setForeground(createForegroundInfo(0))
+            val hasNotificationPermission =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    ContextCompat.checkSelfPermission(
+                        applicationContext,
+                        android.Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+                } else {
+                    true
+                }
+
+            if (hasNotificationPermission) {
+                // Create notification channel for Android O and above
+                createNotificationChannel()
+
+                // Start foreground service with notification
+                setForeground(createForegroundInfo(0))
+            }
             
             val modelDir = File(applicationContext.filesDir, MODEL_DIR_NAME)
             val modelFile = File(modelDir, MODEL_FILENAME)
-            downloadModelWithProgress(modelFile.absolutePath)
+            downloadModelWithProgress(modelFile.absolutePath, hasNotificationPermission)
             Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "Model download failed", e)
@@ -57,7 +71,7 @@ class ModelDownloadWorker(
         }
     }
 
-    private suspend fun downloadModelWithProgress(modelPath: String) = withContext(Dispatchers.IO) {
+    private suspend fun downloadModelWithProgress(modelPath: String, hasNotificationPermission: Boolean) = withContext(Dispatchers.IO) {
         val finalModelFile = File(modelPath)
         val tempModelFile = File(modelPath + ".tmp")
         try {
@@ -100,8 +114,10 @@ class ModelDownloadWorker(
                     // Update progress less frequently to reduce overhead
                     if (progress > lastProgressUpdate || totalBytesRead == contentLength) {
                         setProgress(workDataOf(KEY_PROGRESS to progress))
-                        // Update foreground notification with progress
-                        setForeground(createForegroundInfo(progress))
+                        if (hasNotificationPermission) {
+                            // Update foreground notification with progress
+                            setForeground(createForegroundInfo(progress))
+                        }
                         lastProgressUpdate = progress.toLong()
                     }
                 }
@@ -110,11 +126,24 @@ class ModelDownloadWorker(
             outputStream.close()
             inputStream.close()
             connection.disconnect()
-            
-            tempModelFile.renameTo(finalModelFile)
-            setProgress(workDataOf(KEY_PROGRESS to 100))
-            setForeground(createForegroundInfo(100))
-            Log.d(TAG, "Model download completed.")
+
+            // Finalize the download
+            Log.d(TAG, "Finalizing download...")
+            if (finalModelFile.exists()) {
+                Log.d(TAG, "Deleting existing model file.")
+                finalModelFile.delete()
+            }
+            if (tempModelFile.renameTo(finalModelFile)) {
+                Log.d(TAG, "Model file renamed successfully.")
+                setProgress(workDataOf(KEY_PROGRESS to 100))
+                if (hasNotificationPermission) {
+                    setForeground(createForegroundInfo(100))
+                }
+                Log.d(TAG, "Model download completed.")
+            } else {
+                Log.e(TAG, "Failed to rename temp file to final model file.")
+                throw Exception("Failed to finalize model download.")
+            }
 
         } catch (e: Exception) {
             Log.e(TAG, "Error downloading model: ${e.message}", e)
