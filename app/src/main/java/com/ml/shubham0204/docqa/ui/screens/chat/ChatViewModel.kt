@@ -80,6 +80,44 @@ class ChatViewModel(
         _actionsEnabled.value = !_actionsEnabled.value
     }
 
+    // Permission request callbacks
+    private var _cameraPermissionRequestCallback: (() -> Unit)? = null
+    private var _smsPermissionRequestCallback: (() -> Unit)? = null
+    private var _callLogPermissionRequestCallback: (() -> Unit)? = null
+    private var _mediaPermissionRequestCallback: (() -> Unit)? = null
+    
+    fun setCameraPermissionRequestCallback(callback: () -> Unit) {
+        _cameraPermissionRequestCallback = callback
+    }
+    
+    fun setSmsPermissionRequestCallback(callback: () -> Unit) {
+        _smsPermissionRequestCallback = callback
+    }
+    
+    fun setCallLogPermissionRequestCallback(callback: () -> Unit) {
+        _callLogPermissionRequestCallback = callback
+    }
+    
+    fun setMediaPermissionRequestCallback(callback: () -> Unit) {
+        _mediaPermissionRequestCallback = callback
+    }
+    
+    fun requestCameraPermission() {
+        _cameraPermissionRequestCallback?.invoke()
+    }
+    
+    fun requestSmsPermission() {
+        _smsPermissionRequestCallback?.invoke()
+    }
+    
+    fun requestCallLogPermission() {
+        _callLogPermissionRequestCallback?.invoke()
+    }
+    
+    fun requestMediaPermission() {
+        _mediaPermissionRequestCallback?.invoke()
+    }
+
     private var currentLLMProvider: LLMProvider? = null
 
     init {
@@ -123,15 +161,18 @@ class ChatViewModel(
         _isGeneratingResponseState.value = false
         _currentContextState.value = "" // Clear context when stopping
         
-        // Add a small delay to ensure proper cleanup
-        viewModelScope.launch {
-            delay(100) // Small delay to ensure LLM is properly reset
-        }
-        
         // Clear the response state to indicate cancellation
         if (_responseState.value.isNotEmpty()) {
-            _responseState.value += "\n\n[Response stopped by user"
+            _responseState.value += "\n\n[Response stopped by user]"
         }
+        
+        // Force garbage collection to free memory
+        System.gc()
+        
+        // Log memory usage for debugging
+        val runtime = Runtime.getRuntime()
+        val usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024
+        Log.d("ChatViewModel", "Memory usage after stopping generation: ${usedMemory}MB")
     }
 
     fun getAnswer(
@@ -156,11 +197,62 @@ class ChatViewModel(
                     _responseState.value = "[Actions are currently disabled. Enable actions to use this feature.]"
                     return@launch
                 }
+                
+                val actionResult = actionMatcher.executeAction(action, query)
+                
+                // Check if this is a permission request
+                when (actionResult) {
+                    "PERMISSION_REQUEST:CAMERA" -> {
+                        chatHistoryDB.saveUserMessage(query)
+                        chatHistoryDB.saveMessage(query, "🪄 Camera permission needed for this spell! Please allow camera access when prompted.", "Action: Permission Request")
+                        loadChatHistory()
+                        _questionState.value = query
+                        _responseState.value = "🪄 Camera permission needed for this spell! Please allow camera access when prompted."
+                        
+                        // Request camera permission
+                        requestCameraPermission()
+                        return@launch
+                    }
+                    "PERMISSION_REQUEST:SMS" -> {
+                        chatHistoryDB.saveUserMessage(query)
+                        chatHistoryDB.saveMessage(query, "📱 SMS permission needed for this action! Please allow SMS access when prompted.", "Action: Permission Request")
+                        loadChatHistory()
+                        _questionState.value = query
+                        _responseState.value = "📱 SMS permission needed for this action! Please allow SMS access when prompted."
+                        
+                        // Request SMS permission
+                        requestSmsPermission()
+                        return@launch
+                    }
+                    "PERMISSION_REQUEST:CALL_LOG" -> {
+                        chatHistoryDB.saveUserMessage(query)
+                        chatHistoryDB.saveMessage(query, "📞 Call log permission needed for this action! Please allow call log access when prompted.", "Action: Permission Request")
+                        loadChatHistory()
+                        _questionState.value = query
+                        _responseState.value = "📞 Call log permission needed for this action! Please allow call log access when prompted."
+                        
+                        // Request call log permission
+                        requestCallLogPermission()
+                        return@launch
+                    }
+                    "PERMISSION_REQUEST:MEDIA" -> {
+                        chatHistoryDB.saveUserMessage(query)
+                        chatHistoryDB.saveMessage(query, "🖼️ Media permission needed for this action! Please allow media access when prompted.", "Action: Permission Request")
+                        loadChatHistory()
+                        _questionState.value = query
+                        _responseState.value = "🖼️ Media permission needed for this action! Please allow media access when prompted."
+                        
+                        // Request media permission
+                        requestMediaPermission()
+                        return@launch
+                    }
+                }
+                
                 chatHistoryDB.saveUserMessage(query)
-                chatHistoryDB.saveMessage(query, actionMatcher.executeAction(action, query), "Action: ${action.javaClass.simpleName}")
+                chatHistoryDB.saveMessage(query, actionResult, "Action: ${action.javaClass.simpleName}")
                 loadChatHistory()
                 _questionState.value = query
-                _responseState.value = actionMatcher.executeAction(action, query)
+                _responseState.value = actionResult
                 return@launch
             }
 

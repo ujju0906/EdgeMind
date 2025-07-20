@@ -12,6 +12,10 @@ class ModelManager(private val context: Context) {
     
     companion object {
         private const val MODEL_DIR_NAME = "llm"
+//        private const val MODEL_URL = "https://huggingface.co/litert-community/TinyLlama-1.1B-Chat-v1.0/resolve/main/TinyLlama-1.1B-Chat-v1.0_multi-prefill-seq_q8_ekv1280.task?download=true"
+//        private const val MODEL_FILENAME = "TinyLlama-1.1B-Chat-v1.0_multi-prefill-seq_q8_ekv1280.task"
+//        const val MODEL_URL = "https://huggingface.co/litert-community/Phi-4-mini-instruct/resolve/main/Phi-4-mini-instruct_multi-prefill-seq_q8_ekv1280.task?download=true"
+//        const val MODEL_FILENAME = "Phi-4-mini-instruct_multi-prefill-seq_q8_ekv1280.task"
         private const val MODEL_FILENAME = "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.task"
         private const val MODEL_URL = "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.task?download=true"
         private const val TAG = "ModelManager"

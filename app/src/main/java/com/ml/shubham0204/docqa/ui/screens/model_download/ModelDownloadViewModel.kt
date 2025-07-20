@@ -8,6 +8,8 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.ml.shubham0204.docqa.domain.llm.ModelDownloadWorker
 import com.ml.shubham0204.docqa.domain.llm.ModelManager
+import com.ml.shubham0204.docqa.domain.llm.AppLLMProvider
+import com.ml.shubham0204.docqa.domain.llm.LLMFactory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -16,7 +18,8 @@ import java.util.UUID
 
 class ModelDownloadViewModel(
     private val modelManager: ModelManager,
-    private val context: Context
+    private val context: Context,
+    private val llmFactory: LLMFactory
 ) : ViewModel() {
     
     private val workManager = WorkManager.getInstance(context)
@@ -74,28 +77,38 @@ class ModelDownloadViewModel(
         
         viewModelScope.launch {
             workManager.getWorkInfoByIdFlow(workRequest.id).collect { workInfo ->
-                when (workInfo.state) {
-                    WorkInfo.State.RUNNING -> {
-                        _downloadState.value = DownloadState.Downloading
-                        val progress = workInfo.progress.getInt(ModelDownloadWorker.KEY_PROGRESS, 0)
-                        _downloadProgress.value = progress / 100f
-                    }
-                    WorkInfo.State.SUCCEEDED -> {
-                        _downloadState.value = DownloadState.Success
-                        _downloadProgress.value = 1f
-                        currentWorkId = null
-                        checkModelStatus()
-                    }
-                    WorkInfo.State.FAILED -> {
-                        _downloadState.value = DownloadState.Error("Download failed")
-                        currentWorkId = null
-                    }
-                    WorkInfo.State.CANCELLED -> {
-                        _downloadState.value = DownloadState.Cancelled
-                        currentWorkId = null
-                    }
-                    else -> {
-                        // Other states like ENQUEUED, BLOCKED
+                workInfo?.let { info ->
+                    when (info.state) {
+                        WorkInfo.State.RUNNING -> {
+                            _downloadState.value = DownloadState.Downloading
+                            val progress = info.progress.getInt(ModelDownloadWorker.KEY_PROGRESS, 0)
+                            _downloadProgress.value = progress / 100f
+                        }
+                        WorkInfo.State.SUCCEEDED -> {
+                            _downloadState.value = DownloadState.Success
+                            _downloadProgress.value = 1f
+                            currentWorkId = null
+                            checkModelStatus()
+                            
+                            // Reinitialize LLM with the newly downloaded model
+                            try {
+                                AppLLMProvider.forceReinitialize(llmFactory)
+                            } catch (e: Exception) {
+                                // Log error but don't fail the download
+                                android.util.Log.e("ModelDownloadViewModel", "Failed to reinitialize LLM after download: ${e.message}", e)
+                            }
+                        }
+                        WorkInfo.State.FAILED -> {
+                            _downloadState.value = DownloadState.Error("Download failed")
+                            currentWorkId = null
+                        }
+                        WorkInfo.State.CANCELLED -> {
+                            _downloadState.value = DownloadState.Cancelled
+                            currentWorkId = null
+                        }
+                        else -> {
+                            // Other states like ENQUEUED, BLOCKED
+                        }
                     }
                 }
             }
@@ -128,6 +141,14 @@ class ModelDownloadViewModel(
                 if (success) {
                     _deleteState.value = DeleteState.Success
                     checkModelStatus() // Update the model status
+                    
+                    // Reinitialize LLM after model deletion (will fall back to remote if available)
+                    try {
+                        AppLLMProvider.forceReinitialize(llmFactory)
+                    } catch (e: Exception) {
+                        // Log error but don't fail the deletion
+                        android.util.Log.e("ModelDownloadViewModel", "Failed to reinitialize LLM after deletion: ${e.message}", e)
+                    }
                 } else {
                     _deleteState.value = DeleteState.Error("Failed to delete model")
                 }

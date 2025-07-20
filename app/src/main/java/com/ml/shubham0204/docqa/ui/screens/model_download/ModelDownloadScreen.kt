@@ -51,9 +51,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ml.shubham0204.docqa.ui.components.PermissionHelper
 import com.ml.shubham0204.docqa.ui.components.RequestNotificationPermission
 import com.ml.shubham0204.docqa.ui.theme.DocQATheme
 import org.koin.androidx.compose.koinViewModel
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,9 +70,42 @@ fun ModelDownloadScreen(
     val deleteState by viewModel.deleteState.collectAsState()
     
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showPermissionDialog by remember { mutableStateOf(false) }
+    var shouldRequestNotificationPermission by remember { mutableStateOf(false) }
+    val context = LocalContext.current
     
     // Request notification permission for background downloads
     RequestNotificationPermission()
+    
+    // Check permissions before download
+    fun checkPermissionsAndDownload() {
+        val hasStoragePermission = PermissionHelper.hasStoragePermission(context)
+        val hasNotificationPermission = PermissionHelper.hasNotificationPermission(context)
+        
+        if (hasStoragePermission && hasNotificationPermission) {
+            viewModel.downloadModel()
+        } else {
+            showPermissionDialog = true
+        }
+    }
+    
+    // Handle notification permission request from dialog
+    if (shouldRequestNotificationPermission) {
+        RequestNotificationPermission(
+            onPermissionResult = { granted ->
+                shouldRequestNotificationPermission = false
+                if (granted) {
+                    // Try download again after permission is granted
+                    val hasStoragePermission = PermissionHelper.hasStoragePermission(context)
+                    if (hasStoragePermission) {
+                        viewModel.downloadModel()
+                    } else {
+                        showPermissionDialog = true
+                    }
+                }
+            }
+        )
+    }
 
     DocQATheme {
         Scaffold(
@@ -100,7 +135,7 @@ fun ModelDownloadScreen(
                         // Show download icon only when model is not downloaded and not currently downloading
                         if (!isModelDownloaded && downloadState !is ModelDownloadViewModel.DownloadState.Downloading) {
                             IconButton(
-                                onClick = { viewModel.downloadModel() }
+                                onClick = { checkPermissionsAndDownload() }
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.CloudDownload,
@@ -168,7 +203,7 @@ fun ModelDownloadScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         Text(
-                            text = "Qwen2.5-1.5B-Instruct",
+                            text = "Qwen-1.8B",
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -189,7 +224,7 @@ fun ModelDownloadScreen(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = if (modelSize > 0) "%.1f GB".format(modelSize / 1024f) else "~3.2 GB",
+                                    text = if (modelSize > 0) "%.1f GB".format(modelSize / 1024f) else "~1.8 GB",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -202,7 +237,7 @@ fun ModelDownloadScreen(
                             
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "1.5B",
+                                    text = "1.8B",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -215,7 +250,7 @@ fun ModelDownloadScreen(
                             
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "8-bit",
+                                    text = "4-bit",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -490,7 +525,7 @@ fun ModelDownloadScreen(
                             }
                             
                             Button(
-                                onClick = { viewModel.downloadModel() },
+                                onClick = { checkPermissionsAndDownload() },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Icon(
@@ -584,7 +619,7 @@ fun ModelDownloadScreen(
                     
                     downloadState is ModelDownloadViewModel.DownloadState.Cancelled -> {
                         Button(
-                            onClick = { viewModel.downloadModel() },
+                            onClick = { checkPermissionsAndDownload() },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(
@@ -601,7 +636,7 @@ fun ModelDownloadScreen(
                         Button(
                             onClick = {
                                 viewModel.resetDownloadState()
-                                viewModel.downloadModel()
+                                checkPermissionsAndDownload()
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -611,7 +646,7 @@ fun ModelDownloadScreen(
                     
                     else -> {
                         Button(
-                            onClick = { viewModel.downloadModel() },
+                            onClick = { checkPermissionsAndDownload() },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Icon(
@@ -670,6 +705,52 @@ fun ModelDownloadScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { showDeleteConfirmation = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+        
+        // Permission Dialog
+        if (showPermissionDialog) {
+            AlertDialog(
+                onDismissRequest = { showPermissionDialog = false },
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = "Permissions Required",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                },
+                text = {
+                    Text(
+                        text = "This app needs storage and notification permissions to download the AI model. Please grant these permissions in your device settings.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showPermissionDialog = false
+                            shouldRequestNotificationPermission = true
+                        }
+                    ) {
+                        Text("Grant Permissions", fontWeight = FontWeight.SemiBold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showPermissionDialog = false }) {
                         Text("Cancel")
                     }
                 }

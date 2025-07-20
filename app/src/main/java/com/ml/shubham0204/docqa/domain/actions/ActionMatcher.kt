@@ -18,8 +18,8 @@ class ActionMatcher(
     init {
         CoroutineScope(Dispatchers.IO).launch {
             actions.forEach { action ->
-                // For simplicity, we'll use the first description's embedding.
-                // A more robust approach could average the embeddings of all descriptions.
+                // Use the first description's embedding for now
+                // TODO: Consider averaging embeddings of all descriptions for better matching
                 action.embedding = sentenceEncoder.encodeText(action.descriptions.first())
             }
         }
@@ -32,6 +32,20 @@ class ActionMatcher(
     fun findBestAction(query: String): AppAction? {
         if (actions.any { it.embedding == null }) {
             return null // Embeddings are not ready yet
+        }
+
+        val queryLower = query.lowercase().trim()
+        
+        // First, check for exact keyword matches (highest priority)
+        val exactMatches = actions.filter { action ->
+            action.descriptions.any { description ->
+                queryLower.contains(description.lowercase())
+            }
+        }
+        
+        if (exactMatches.isNotEmpty()) {
+            // Return the first exact match (prioritize specific actions over general ones)
+            return exactMatches.first()
         }
 
         val queryEmbedding = sentenceEncoder.encodeText(query)

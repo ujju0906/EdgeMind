@@ -54,6 +54,7 @@ android {
     packaging {
         resources {
             excludes += "META-INF/DEPENDENCIES"
+            pickFirsts += "META-INF/gradle/incremental.annotation.processors"
         }
     }
     buildToolsVersion = "35.0.0"
@@ -67,6 +68,17 @@ ksp {
 configurations {
     all {
         exclude(group = "io.objectbox", module = "objectbox-android-objectbrowser")
+    }
+}
+
+// Configuration for dependency resolution
+configurations.all {
+    resolutionStrategy {
+        eachDependency {
+            if (requested.group == "org.jetbrains.kotlin") {
+                useVersion("2.0.0")
+            }
+        }
     }
 }
 
@@ -89,7 +101,7 @@ dependencies {
     // Sentence Embeddings
     // https://github.com/shubham0204/Sentence-Embeddings-Android
     implementation(files("libs/sentence_embeddings.aar"))
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
+    implementation(libs.onnxruntime.android)
 
     // iTextPDF - for parsing PDFs
     implementation(libs.itextpdf)
@@ -102,29 +114,25 @@ dependencies {
     // Gemini SDK - LLM
     implementation(libs.generativeai)
 
-    // MediaPipe LLM Inference - Local LLM
-    implementation("com.google.mediapipe:tasks-genai:0.10.24")
+    // MediaPipe LLM Inference - Local LLM (Updated for Android 15 compatibility)
+    implementation(libs.tasks.genai)
 
     // compose-markdown
     // https://github.com/jeziellago/compose-markdown
     implementation(libs.compose.markdown)
 
     // Koin dependency injection
+    implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)
     implementation(libs.koin.annotations)
     implementation(libs.koin.androidx.compose)
     ksp(libs.koin.ksp.compiler)
 
     // For secured/encrypted shared preferences
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
-
-    // Koin
-    implementation(platform("io.insert-koin:koin-bom:3.5.6"))
-    implementation("io.insert-koin:koin-android")
-    implementation("io.insert-koin:koin-androidx-compose")
+    implementation(libs.androidx.security.crypto)
 
     // WorkManager for background tasks
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation(libs.androidx.work.runtime.ktx)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

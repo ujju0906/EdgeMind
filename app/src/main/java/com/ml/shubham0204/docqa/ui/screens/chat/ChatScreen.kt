@@ -1,11 +1,16 @@
 package com.ml.shubham0204.docqa.ui.screens.chat
 
+import android.Manifest
+import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +28,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Computer
@@ -32,6 +36,8 @@ import androidx.compose.material.icons.filled.Downloading
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Phone
@@ -39,26 +45,25 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.Switch
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -68,7 +73,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -86,19 +90,6 @@ import com.ml.shubham0204.docqa.ui.components.createAlertDialog
 import com.ml.shubham0204.docqa.ui.theme.DocQATheme
 import dev.jeziellago.compose.markdowntext.MarkdownText
 import org.koin.androidx.compose.koinViewModel
-import androidx.compose.material3.rememberTooltipState
-import androidx.compose.material3.CircularProgressIndicator
-import android.Manifest
-import android.app.Activity
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import android.provider.Settings
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.material3.Divider
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.ui.text.style.TextOverflow
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -110,24 +101,24 @@ fun ChatScreen(
     onEditAPIKeyClick: (() -> Unit),
     onModelDownloadClick: (() -> Unit) = {},
 ) {
-    DocQATheme {
-        val chatViewModel: ChatViewModel = koinViewModel()
-        val llmState by chatViewModel.llmInitializationState.collectAsState()
-        val context = LocalContext.current
-        val isSmsContextEnabled by chatViewModel.isSmsContextEnabled.collectAsState()
-        var showSmsSettingsDialog by remember { mutableStateOf(false) }
+            DocQATheme {
+            val chatViewModel: ChatViewModel = koinViewModel()
+            val llmState by chatViewModel.llmInitializationState.collectAsState()
+            val context = LocalContext.current
+            val isSmsContextEnabled by chatViewModel.isSmsContextEnabled.collectAsState()
+            var showSmsSettingsDialog by remember { mutableStateOf(false) }
 
-        val isCallLogContextEnabled by chatViewModel.isCallLogContextEnabled.collectAsState()
-        var showCallLogSettingsDialog by remember { mutableStateOf(false) }
+            val isCallLogContextEnabled by chatViewModel.isCallLogContextEnabled.collectAsState()
+            var showCallLogSettingsDialog by remember { mutableStateOf(false) }
 
-        val isDocumentContextEnabled by chatViewModel.isDocumentContextEnabled.collectAsState()
+            val isDocumentContextEnabled by chatViewModel.isDocumentContextEnabled.collectAsState()
 
         // Chat history state
         val chatHistory by chatViewModel.chatHistoryState.collectAsState()
         val question by chatViewModel.questionState.collectAsState()
         val response by chatViewModel.responseState.collectAsState()
         val isGeneratingResponse by chatViewModel.isGeneratingResponseState.collectAsState()
-        val retrievedContextList by chatViewModel.retrievedContextListState.collectAsState()
+       // val retrievedContextList by chatViewModel.retrievedContextListState.collectAsState()
         
         // Debug chat history state
         LaunchedEffect(chatHistory) {
@@ -143,6 +134,8 @@ fun ChatScreen(
         var showSearchDialog by remember { mutableStateOf(false) }
         var searchQuery by remember { mutableStateOf("") }
         var showClearHistoryDialog by remember { mutableStateOf(false) }
+        var showCameraSettingsDialog by remember { mutableStateOf(false) }
+        var showMediaSettingsDialog by remember { mutableStateOf(false) }
         
         val listState = rememberLazyListState()
         val keyboardController = LocalSoftwareKeyboardController.current
@@ -213,6 +206,66 @@ fun ChatScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { showCallLogSettingsDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        if (showCameraSettingsDialog) {
+            AlertDialog(
+                onDismissRequest = { showCameraSettingsDialog = false },
+                title = { Text("Camera Permission Required") },
+                text = {
+                    Text(
+                        "You have permanently denied the Camera permission. To use the flashlight (Lumos spell), you must enable it from the app settings."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showCameraSettingsDialog = false
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", context.packageName, null)
+                            }
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Text("Open Settings")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCameraSettingsDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        if (showMediaSettingsDialog) {
+            AlertDialog(
+                onDismissRequest = { showMediaSettingsDialog = false },
+                title = { Text("Media Permission Required") },
+                text = {
+                    Text(
+                        "You have permanently denied the Media permission. To access photos and files, you must enable it from the app settings."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showMediaSettingsDialog = false
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", context.packageName, null)
+                            }
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Text("Open Settings")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showMediaSettingsDialog = false }) {
                         Text("Cancel")
                     }
                 }
@@ -317,6 +370,62 @@ fun ChatScreen(
                 }
             }
 
+        val cameraPermissionLauncher =
+            rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { isGranted: Boolean ->
+                if (isGranted) {
+                    // Camera permission granted, can now use flashlight
+                    Toast.makeText(context, "🪄 Camera permission granted! You can now cast Lumos and Nox spells!", Toast.LENGTH_LONG).show()
+                } else {
+                    val activity = context as? Activity
+                    if (activity != null && !activity.shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
+                        showCameraSettingsDialog = true
+                    } else {
+                        Toast.makeText(context, "Camera permission denied. Flashlight spells won't work.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+        val mediaPermissionLauncher =
+            rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { isGranted: Boolean ->
+                if (isGranted) {
+                    // Media permission granted
+                    Toast.makeText(context, "🖼️ Media permission granted! You can now access photos and files.", Toast.LENGTH_LONG).show()
+                } else {
+                    val activity = context as? Activity
+                    if (activity != null && !activity.shouldShowRequestPermissionRationale(Manifest.permission.READ_MEDIA_IMAGES)) {
+                        showMediaSettingsDialog = true
+                    } else {
+                        Toast.makeText(context, "Media permission denied. Gallery access won't work.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+        // Set up permission request callbacks
+        LaunchedEffect(Unit) {
+            chatViewModel.setCameraPermissionRequestCallback {
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+            chatViewModel.setSmsPermissionRequestCallback {
+                smsPermissionLauncher.launch(Manifest.permission.READ_SMS)
+            }
+            chatViewModel.setCallLogPermissionRequestCallback {
+                callLogPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
+            }
+            chatViewModel.setMediaPermissionRequestCallback {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    // Android 13+ uses READ_MEDIA_IMAGES
+                    mediaPermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
+                } else {
+                    // Android 12 and below use READ_EXTERNAL_STORAGE
+                    mediaPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                }
+            }
+        }
+
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
@@ -405,7 +514,7 @@ fun ChatScreen(
                                     text =
                                     when (llmState) {
                                         is LLMInitializationState.Initialized ->
-                                            if (isLocalModelAvailable) "Using Local LLM (Qwen2.5-1.5B)"
+                                            if (isLocalModelAvailable) "Using Local LLM (TinyLlama-1.1B)"
                                             else "Using Remote LLM (Gemini)"
                                         LLMInitializationState.Initializing -> "LLM is initializing..."
                                         is LLMInitializationState.Error -> "LLM failed to initialize"
@@ -883,7 +992,7 @@ fun ChatMessageItem(
                         linkColor = MaterialTheme.colorScheme.primary,
                         onLinkClicked = { url ->
                             try {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                                 context.startActivity(intent)
                             } catch (e: Exception) {
                                 Log.e("ChatScreen", "Error opening link: $url", e)
@@ -1039,7 +1148,7 @@ fun StreamingResponseItem(
                     linkColor = MaterialTheme.colorScheme.primary,
                     onLinkClicked = { url ->
                         try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                            val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                             localContext.startActivity(intent)
                         } catch (e: Exception) {
                             Log.e("ChatScreen", "Error opening link: $url", e)

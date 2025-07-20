@@ -250,6 +250,39 @@
 }
 
 # ============================================================================
+# ANDROID 15+ COMPATIBILITY RULES
+# ============================================================================
+
+# Keep Android 15+ specific classes
+-keep class android.app.NotificationManager { *; }
+-keep class android.app.NotificationChannel { *; }
+-keep class android.app.NotificationChannelGroup { *; }
+
+# Keep MediaPipe native libraries for Android 15
+-keep class com.google.mediapipe.tasks.core.** { *; }
+-keepclassmembers class com.google.mediapipe.tasks.core.** { *; }
+
+# Keep MediaPipe LLM inference specific classes
+-keep class com.google.mediapipe.tasks.genai.llminference.** { *; }
+-keepclassmembers class com.google.mediapipe.tasks.genai.llminference.** { *; }
+
+# Keep MediaPipe model loading classes
+-keep class com.google.mediapipe.tasks.core.BaseOptions { *; }
+-keepclassmembers class com.google.mediapipe.tasks.core.BaseOptions { *; }
+
+# ============================================================================
+# MEMORY MANAGEMENT RULES
+# ============================================================================
+
+# Keep memory management related classes
+-keep class java.lang.Runtime { *; }
+-keep class java.lang.System { *; }
+
+# Keep garbage collection related classes
+-keep class java.lang.ref.** { *; }
+-keepclassmembers class java.lang.ref.** { *; }
+
+# ============================================================================
 # WEBVIEW RULES (if needed in future)
 # ============================================================================
 
