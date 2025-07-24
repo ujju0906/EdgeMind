@@ -1,10 +1,1 @@
-*.iml
-.gradle
-/local.properties
-.idea
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
+@"*.apk*.dm*.log/local.properties/app/release//.vscode//.idea/.gradle/build/*/build/output-metadata.json"@ | Out-File -Encoding ascii .gitignore
