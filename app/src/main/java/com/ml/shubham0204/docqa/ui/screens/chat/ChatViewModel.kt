@@ -186,7 +186,13 @@ class ChatViewModel(
         }
         
         viewModelScope.launch {
+            // Note: SMS and phone call actions have been removed to prevent interference with RAG functionality
+            // Queries about SMS and calls will now properly go to the LLM for RAG processing
+            
+            // Always check for actions first, regardless of LLM availability
+            Log.d("ChatViewModel", "Checking for actions with query: '$query'")
             val action = actionMatcher.findBestAction(query)
+            Log.d("ChatViewModel", "Action found: ${action?.id ?: "none"}")
             if (action != null) {
                 if (!_actionsEnabled.value) {
                     // Actions are disabled, show message in chat
@@ -213,28 +219,7 @@ class ChatViewModel(
                         requestCameraPermission()
                         return@launch
                     }
-                    "PERMISSION_REQUEST:SMS" -> {
-                        chatHistoryDB.saveUserMessage(query)
-                        chatHistoryDB.saveMessage(query, "📱 SMS permission needed for this action! Please allow SMS access when prompted.", "Action: Permission Request")
-                        loadChatHistory()
-                        _questionState.value = query
-                        _responseState.value = "📱 SMS permission needed for this action! Please allow SMS access when prompted."
-                        
-                        // Request SMS permission
-                        requestSmsPermission()
-                        return@launch
-                    }
-                    "PERMISSION_REQUEST:CALL_LOG" -> {
-                        chatHistoryDB.saveUserMessage(query)
-                        chatHistoryDB.saveMessage(query, "📞 Call log permission needed for this action! Please allow call log access when prompted.", "Action: Permission Request")
-                        loadChatHistory()
-                        _questionState.value = query
-                        _responseState.value = "📞 Call log permission needed for this action! Please allow call log access when prompted."
-                        
-                        // Request call log permission
-                        requestCallLogPermission()
-                        return@launch
-                    }
+                    // Note: SMS and CALL_LOG permission requests removed as those actions are no longer available
                     "PERMISSION_REQUEST:MEDIA" -> {
                         chatHistoryDB.saveUserMessage(query)
                         chatHistoryDB.saveMessage(query, "🖼️ Media permission needed for this action! Please allow media access when prompted.", "Action: Permission Request")
@@ -253,6 +238,30 @@ class ChatViewModel(
                 loadChatHistory()
                 _questionState.value = query
                 _responseState.value = actionResult
+                return@launch
+            }
+
+            // For non-action queries, check LLM availability and handle appropriately
+            val llmAvailable = isLocalModelAvailable() || isRemoteModelAvailable()
+            val llmInitialized = isLLMInitialized()
+            
+            if (!llmAvailable || !llmInitialized) {
+                Log.d("ChatViewModel", "LLM not available or not initialized, showing helpful message")
+                
+                // Immediately add user message to chat history
+                chatHistoryDB.saveUserMessage(query)
+                loadChatHistory()
+                _questionState.value = query
+                
+                val helpfulMessage = if (!llmAvailable) {
+                    "I can't process this query because no language model is available. Please download a local model or configure a Gemini API key to use AI features. However, you can still use actions like opening apps, controlling device settings, and other system functions. Try commands like 'open camera', 'turn on flashlight', or 'open settings'."
+                } else {
+                    "I'm having trouble initializing the language model right now. Please try again in a moment, or use actions like 'open camera', 'turn on flashlight', or 'open settings'."
+                }
+                
+                chatHistoryDB.saveMessage(query, helpfulMessage, "LLM: Not Available")
+                loadChatHistory()
+                _responseState.value = helpfulMessage
                 return@launch
             }
 
@@ -283,14 +292,21 @@ class ChatViewModel(
                 var jointContext = ""
                 val retrievedContextList = ArrayList<RetrievedContext>()
                 
-                // Build context with proper error handling
+                // Build context with proper error handling and Android 15 compatibility
+                Log.d("ChatViewModel", "Starting context building for query: '$query'")
+                Log.d("ChatViewModel", "Context settings - SMS: ${_isSmsContextEnabled.value}, CallLog: ${_isCallLogContextEnabled.value}, Documents: ${_isDocumentContextEnabled.value}")
+                
                 try {
 
                 if (_isSmsContextEnabled.value) {
+                    Log.d("ChatViewModel", "Processing SMS context...")
                     try {
                         if (smsReader.hasPermission()) {
+                            Log.d("ChatViewModel", "SMS permission granted, reading messages...")
                             // Reduced count from default 10 to 3 to reduce context length
                             val smsMessages = smsReader.readLastSmsMessages(count = 3)
+                            Log.d("ChatViewModel", "SMS messages retrieved: ${smsMessages.size}")
+                            
                             if (smsMessages.isNotEmpty()) {
                                 jointContext += "📱 RECENT SMS MESSAGES:\n"
                                 smsMessages.forEachIndexed { index, sms ->
@@ -302,20 +318,29 @@ class ChatViewModel(
                                         RetrievedContext(fileName = sms.sender, context = "SMS from ${sms.sender}: ${sms.body}")
                                     )
                                 }
+                                Log.d("ChatViewModel", "SMS context added successfully")
+                            } else {
+                                Log.w("ChatViewModel", "No SMS messages found despite permission being granted")
                             }
                         } else {
-                            Log.w("ChatViewModel", "SMS permission not granted")
+                            Log.w("ChatViewModel", "SMS permission not granted - cannot read SMS context")
                         }
                     } catch (e: Exception) {
                         Log.e("ChatViewModel", "Error reading SMS messages: ${e.message}", e)
+                        Log.e("ChatViewModel", "SMS error stack trace: ${e.stackTraceToString()}")
                         // Continue without SMS if there's an error
                     }
                 }
+                
                 if (_isCallLogContextEnabled.value) {
+                    Log.d("ChatViewModel", "Processing Call Log context...")
                     try {
                         if (callLogsReader.hasPermission()) {
+                            Log.d("ChatViewModel", "Call log permission granted, reading entries...")
                             // Reduced count from default 10 to 3 to reduce context length
                             val callLogs = callLogsReader.readLastCallLogs(count = 3)
+                            Log.d("ChatViewModel", "Call logs retrieved: ${callLogs.size}")
+                            
                             if (callLogs.isNotEmpty()) {
                                 jointContext += "📞 RECENT CALL LOGS:\n"
                                 callLogs.forEachIndexed { index, call ->
@@ -329,42 +354,62 @@ class ChatViewModel(
                                         RetrievedContext(fileName = "Call Log", context = "Call with $callName: ${call.type} call, ${call.formattedDuration}")
                                     )
                                 }
+                                Log.d("ChatViewModel", "Call log context added successfully")
+                            } else {
+                                Log.w("ChatViewModel", "No call logs found despite permission being granted")
                             }
                         } else {
-                            Log.w("ChatViewModel", "Call log permission not granted")
+                            Log.w("ChatViewModel", "Call log permission not granted - cannot read call log context")
                         }
                     } catch (e: Exception) {
                         Log.e("ChatViewModel", "Error reading call logs: ${e.message}", e)
+                        Log.e("ChatViewModel", "Call log error stack trace: ${e.stackTraceToString()}")
                         // Continue without call logs if there's an error
                     }
                 }
 
                 if (_isDocumentContextEnabled.value) {
+                    Log.d("ChatViewModel", "Processing Document context...")
                     Log.d("AppPerformance", "Starting: Encode query and retrieve context")
                     val queryStartTime = System.currentTimeMillis()
-                    val queryEmbedding = sentenceEncoder.encodeText(query)
-                    // Reduced from 5 to 3 chunks to reduce context length
-                    val similarChunks = chunksDB.getSimilarChunks(queryEmbedding, n = 3)
-                    if (similarChunks.isNotEmpty()) {
-                        jointContext += "📄 RELEVANT DOCUMENT CONTENT:\n"
-                        similarChunks.forEachIndexed { index, chunk ->
-                            jointContext += "${index + 1}. From: ${chunk.second.docFileName}\n"
-                            jointContext += "   📝 Content: ${chunk.second.chunkData}\n"
-                            jointContext += "\n"
-                            retrievedContextList.add(
-                                RetrievedContext(chunk.second.docFileName, chunk.second.chunkData)
-                            )
+                    
+                    try {
+                        val queryEmbedding = sentenceEncoder.encodeText(query)
+                        Log.d("ChatViewModel", "Query embedding created successfully")
+                        
+                        // Reduced from 5 to 3 chunks to reduce context length
+                        val similarChunks = chunksDB.getSimilarChunks(queryEmbedding, n = 3)
+                        Log.d("ChatViewModel", "Similar chunks retrieved: ${similarChunks.size}")
+                        
+                        if (similarChunks.isNotEmpty()) {
+                            jointContext += "📄 RELEVANT DOCUMENT CONTENT:\n"
+                            similarChunks.forEachIndexed { index, chunk ->
+                                jointContext += "${index + 1}. From: ${chunk.second.docFileName}\n"
+                                jointContext += "   📝 Content: ${chunk.second.chunkData}\n"
+                                jointContext += "\n"
+                                retrievedContextList.add(
+                                    RetrievedContext(chunk.second.docFileName, chunk.second.chunkData)
+                                )
+                            }
+                            Log.d("ChatViewModel", "Document context added successfully")
+                        } else {
+                            Log.w("ChatViewModel", "No similar document chunks found")
                         }
+                        
+                        val queryEndTime = System.currentTimeMillis()
+                        Log.d(
+                            "AppPerformance",
+                            "Finished: Encode query and retrieve context. Time taken: ${queryEndTime - queryStartTime}ms"
+                        )
+                    } catch (e: Exception) {
+                        Log.e("ChatViewModel", "Error processing document context: ${e.message}", e)
+                        Log.e("ChatViewModel", "Document error stack trace: ${e.stackTraceToString()}")
                     }
-                    val queryEndTime = System.currentTimeMillis()
-                    Log.d(
-                        "AppPerformance",
-                        "Finished: Encode query and retrieve context. Time taken: ${queryEndTime - queryStartTime}ms"
-                    )
                 }
                 
                 } catch (e: Exception) {
                     Log.e("ChatViewModel", "Error building context: ${e.message}", e)
+                    Log.e("ChatViewModel", "Context building error stack trace: ${e.stackTraceToString()}")
                     // Continue with empty context if there's an error
                     jointContext = "No additional context available due to an error."
                 }
@@ -395,11 +440,8 @@ class ChatViewModel(
                 
                 val inferenceStartTime = System.currentTimeMillis()
                 try {
-                    val llm =
-                        (AppLLMProvider.initializationState.value as? LLMInitializationState.Initialized)
-                            ?.llmProvider
-                            ?: throw IllegalStateException("LLM not initialized")
-
+                    // At this point, we know LLM is available and initialized (checked earlier)
+                    val llm = (AppLLMProvider.initializationState.value as LLMInitializationState.Initialized).llmProvider
                     currentLLMProvider = llm
 
                     var isFirstToken = true
@@ -536,6 +578,100 @@ class ChatViewModel(
     fun isLocalModelAvailable(): Boolean = llmFactory.isLocalModelAvailable()
 
     fun isRemoteModelAvailable(): Boolean = llmFactory.isRemoteModelAvailable()
+    
+    fun isLLMInitialized(): Boolean {
+        return AppLLMProvider.initializationState.value is LLMInitializationState.Initialized
+    }
+    
+    fun getLLMStatus(): String {
+        return when (AppLLMProvider.initializationState.value) {
+            is LLMInitializationState.NotInitialized -> "Not Initialized"
+            is LLMInitializationState.Initializing -> "Initializing"
+            is LLMInitializationState.Initialized -> "Ready"
+            is LLMInitializationState.Error -> "Error"
+            else -> "Unknown"
+        }
+    }
+    
+    // Simple method to send a message without LLM processing (for testing)
+    fun sendSimpleMessage(message: String) {
+        viewModelScope.launch {
+            chatHistoryDB.saveUserMessage(message)
+            chatHistoryDB.saveMessage(message, "Message received! (LLM not available)", "Simple Response")
+            loadChatHistory()
+            _questionState.value = message
+            _responseState.value = "Message received! (LLM not available)"
+        }
+    }
+
+    // Debug function to check context availability
+    fun debugContextStatus() {
+        Log.d("ChatViewModel", "=== Context Status Debug ===")
+        Log.d("ChatViewModel", "SMS Context Enabled: ${_isSmsContextEnabled.value}")
+        Log.d("ChatViewModel", "SMS Permission: ${smsReader.hasPermission()}")
+        Log.d("ChatViewModel", "Call Log Context Enabled: ${_isCallLogContextEnabled.value}")
+        Log.d("ChatViewModel", "Call Log Permission: ${callLogsReader.hasPermission()}")
+        Log.d("ChatViewModel", "Document Context Enabled: ${_isDocumentContextEnabled.value}")
+        Log.d("ChatViewModel", "Document Count: ${documentsDB.getDocsCount()}")
+        Log.d("ChatViewModel", "Chunk Count: ${chunksDB.getChunksCount()}")
+        Log.d("ChatViewModel", "Android Version: ${android.os.Build.VERSION.SDK_INT}")
+        Log.d("ChatViewModel", "Sentence Encoder Ready: ${sentenceEncoder.isReady()}")
+        Log.d("ChatViewModel", "LLM Status: ${getLLMStatus()}")
+        Log.d("ChatViewModel", "LLM Initialized: ${isLLMInitialized()}")
+        Log.d("ChatViewModel", "Local Model Available: ${isLocalModelAvailable()}")
+        Log.d("ChatViewModel", "Remote Model Available: ${isRemoteModelAvailable()}")
+        Log.d("ChatViewModel", "Actions Enabled: ${_actionsEnabled.value}")
+        Log.d("ChatViewModel", "==========================")
+        
+        // Retry action embedding initialization if sentence encoder is ready
+        if (sentenceEncoder.isReady()) {
+            actionMatcher.retryEmbeddingInitialization()
+        }
+    }
+    
+    // Debug function to test context building
+    fun debugContextBuilding() {
+        // Test context building with a sample query
+        viewModelScope.launch {
+            try {
+                Log.d("ChatViewModel", "=== Testing Context Building ===")
+                val testQuery = "test query for context building"
+                var testContext = ""
+                val testRetrievedContextList = ArrayList<RetrievedContext>()
+                
+                if (_isSmsContextEnabled.value && smsReader.hasPermission()) {
+                    val smsMessages = smsReader.readLastSmsMessages(count = 1)
+                    Log.d("ChatViewModel", "Test SMS messages found: ${smsMessages.size}")
+                    if (smsMessages.isNotEmpty()) {
+                        testContext += "📱 TEST SMS: ${smsMessages.first().sender} - ${smsMessages.first().body}\n"
+                    }
+                }
+                
+                if (_isCallLogContextEnabled.value && callLogsReader.hasPermission()) {
+                    val callLogs = callLogsReader.readLastCallLogs(count = 1)
+                    Log.d("ChatViewModel", "Test call logs found: ${callLogs.size}")
+                    if (callLogs.isNotEmpty()) {
+                        testContext += "📞 TEST CALL: ${callLogs.first().name ?: "Unknown"} - ${callLogs.first().type}\n"
+                    }
+                }
+                
+                if (_isDocumentContextEnabled.value) {
+                    val queryEmbedding = sentenceEncoder.encodeText(testQuery)
+                    val similarChunks = chunksDB.getSimilarChunks(queryEmbedding, n = 1)
+                    Log.d("ChatViewModel", "Test document chunks found: ${similarChunks.size}")
+                    if (similarChunks.isNotEmpty()) {
+                        testContext += "📄 TEST DOC: ${similarChunks.first().second.docFileName}\n"
+                    }
+                }
+                
+                Log.d("ChatViewModel", "Test context built: ${testContext.length} characters")
+                Log.d("ChatViewModel", "Test context content: $testContext")
+                Log.d("ChatViewModel", "=== Context Building Test Complete ===")
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Error in context building test: ${e.message}", e)
+            }
+        }
+    }
 
     // Debug function to test chat history
     fun debugChatHistory() {

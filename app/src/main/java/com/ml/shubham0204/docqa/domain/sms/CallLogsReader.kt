@@ -9,6 +9,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import androidx.core.content.ContextCompat
 import android.Manifest
+import android.os.Build
 
 data class CallLogEntry(
     val number: String,
@@ -29,10 +30,13 @@ class CallLogsReader(private val context: Context) {
     private val fullDateTimeFormat = SimpleDateFormat("MMM dd, yyyy 'at' HH:mm", Locale.getDefault())
 
     fun hasPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
+        val hasPermission = ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.READ_CALL_LOG
         ) == PackageManager.PERMISSION_GRANTED
+        
+        Log.d("CallLogsReader", "Call log permission check: $hasPermission (Android ${Build.VERSION.SDK_INT})")
+        return hasPermission
     }
 
     fun readLastCallLogs(count: Int = 10): List<CallLogEntry> {
@@ -40,9 +44,11 @@ class CallLogsReader(private val context: Context) {
         
         // Check permission first
         if (!hasPermission()) {
-            Log.w("CallLogsReader", "No READ_CALL_LOG permission")
+            Log.w("CallLogsReader", "No READ_CALL_LOG permission - cannot read call logs")
             return callLogs
         }
+        
+        Log.d("CallLogsReader", "Starting call log read operation for $count entries on Android ${Build.VERSION.SDK_INT}")
         
         try {
             val projection =
@@ -53,13 +59,26 @@ class CallLogsReader(private val context: Context) {
                     CallLog.Calls.DURATION,
                     CallLog.Calls.TYPE)
 
+            // For Android 15+, we need to be more careful with content provider access
+            val query = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // Android 15+ - use more specific query without LIMIT clause
+                "${CallLog.Calls.DATE} DESC"
+            } else {
+                // Older versions
+                "${CallLog.Calls.DATE} DESC"
+            }
+            
+            Log.d("CallLogsReader", "Querying call logs with: $query")
+
             context.contentResolver.query(
                 CallLog.Calls.CONTENT_URI,
                 projection,
                 null,
                 null,
-                "${CallLog.Calls.DATE} DESC"
+                query
             )?.use { cursor ->
+                Log.d("CallLogsReader", "Call log cursor returned with ${cursor.count} rows")
+                
                 if (cursor.moveToFirst()) {
                     val numberColumn = cursor.getColumnIndexOrThrow(CallLog.Calls.NUMBER)
                     val nameColumn = cursor.getColumnIndexOrThrow(CallLog.Calls.CACHED_NAME)
@@ -67,6 +86,7 @@ class CallLogsReader(private val context: Context) {
                     val durationColumn = cursor.getColumnIndexOrThrow(CallLog.Calls.DURATION)
                     val typeColumn = cursor.getColumnIndexOrThrow(CallLog.Calls.TYPE)
                     var processedCount = 0
+                    
                     do {
                         try {
                             val callDate = cursor.getLong(dateColumn)
@@ -105,16 +125,30 @@ class CallLogsReader(private val context: Context) {
                                     formattedDuration = formattedDuration
                                 ))
                             processedCount++
+                            
+                            // Limit the number of entries for Android 15+
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && processedCount >= count) {
+                                break
+                            }
                         } catch (e: Exception) {
                             Log.e("CallLogsReader", "Error processing call log entry: ${e.message}", e)
                             // Continue with next entry
                         }
-                    } while (cursor.moveToNext() && processedCount < count)
+                    } while (cursor.moveToNext())
+                    
+                    Log.d("CallLogsReader", "Successfully processed $processedCount call log entries")
+                } else {
+                    Log.w("CallLogsReader", "Call log cursor is empty - no entries found")
                 }
+            } ?: run {
+                Log.e("CallLogsReader", "Call log content resolver query returned null")
             }
         } catch (e: Exception) {
             Log.e("CallLogsReader", "Error reading call logs: ${e.message}", e)
+            Log.e("CallLogsReader", "Stack trace: ${e.stackTraceToString()}")
         }
+        
+        Log.d("CallLogsReader", "Call log read operation completed. Found ${callLogs.size} entries")
         return callLogs
     }
 
@@ -143,6 +177,7 @@ class CallLogsReader(private val context: Context) {
     fun getCallLogsAsText(count: Int = 10): String {
         val callLogs = readLastCallLogs(count)
         if (callLogs.isEmpty()) {
+            Log.w("CallLogsReader", "No call logs found for text conversion")
             return "No call logs found."
         }
 

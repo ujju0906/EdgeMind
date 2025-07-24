@@ -39,4 +39,8 @@ class ChunksDB {
                 .toList(),
         )
     }
+    
+    fun getChunksCount(): Long {
+        return chunksBox.count()
+    }
 }

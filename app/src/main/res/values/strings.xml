@@ -5,8 +5,7 @@
 You are an AI assistant. Answer the user query naturally and helpfully.
 Context: $CONTEXT
 Query: $QUERY
-If the context is relevant, use it. If not, respond as a helpful human.
-DO NOT RESPOND WITH THE REASONING JUST GIVE NATURAL HUMAN RESPONSE.
+If the context is relevant, use it. If not, respond with current knowledge.
 Now answer:
 </string>
 

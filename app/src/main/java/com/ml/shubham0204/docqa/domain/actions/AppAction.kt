@@ -298,7 +298,7 @@ fun getPredefinedActions(context: Context): List<AppAction> {
     actions.add(
             AppAction(
                 id = "open_wifi_settings",
-            descriptions = listOf("Open Wi-Fi settings", "Connect to Wi-Fi", "Show network settings", "Wi-Fi", "Wireless", "Internet settings"),
+            descriptions = listOf("Open WiFi settings", "Connect to WiFi", "Show network settings", "WiFi", "Wireless", "Internet settings"),
                 action = { ctx, _ ->
                 val intent = Intent(Settings.ACTION_WIFI_SETTINGS).apply {
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -451,114 +451,9 @@ fun getPredefinedActions(context: Context): List<AppAction> {
         )
 
     // ===== BASIC ANDROID APPS =====
-    actions.add(
-        AppAction(
-            id = "open_phone",
-            descriptions = listOf("Open phone", "Phone", "Dialer", "Call", "Contacts", "Make a call", "Dial", "Call someone"),
-            action = { ctx, _ ->
-                try {
-                    // Check call log permission for Android 15+
-                    if (ctx.checkSelfPermission(android.Manifest.permission.READ_CALL_LOG) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                        return@AppAction "PERMISSION_REQUEST:CALL_LOG"
-                    }
-                    
-                    // Try to open phone app by package name
-                    val phonePackages = listOf("com.android.dialer", "com.google.android.dialer", "com.samsung.android.dialer", "com.android.phone")
-                    var opened = false
-                    
-                    for (packageName in phonePackages) {
-                        try {
-                            val intent = ctx.packageManager.getLaunchIntentForPackage(packageName)
-                            if (intent != null) {
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                ctx.startActivity(intent)
-                                opened = true
-                                break
-                            }
-                        } catch (e: Exception) {
-                            continue
-                        }
-                    }
-                    
-                    if (opened) "📞 Opening phone dialer" else "Phone app not found"
-                } catch (e: Exception) {
-                    "Phone app not found"
-                }
-            },
-            showInChat = true
-        )
-    )
+    // Note: SMS and Phone call actions removed to prevent interference with RAG functionality
     
-    actions.add(
-        AppAction(
-            id = "open_messages",
-            descriptions = listOf("Open messages", "Messages", "SMS", "Text", "Message", "Messaging", "Send text", "Send message"),
-            action = { ctx, _ ->
-                try {
-                    // Check SMS permission for Android 15+
-                    if (ctx.checkSelfPermission(android.Manifest.permission.READ_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                        return@AppAction "PERMISSION_REQUEST:SMS"
-                    }
-                    
-                    // Try to open messages app by package name
-                    val messagePackages = listOf("com.android.mms", "com.google.android.apps.messaging", "com.samsung.android.messaging", "com.android.sms")
-                    var opened = false
-                    
-                    for (packageName in messagePackages) {
-                        try {
-                            val intent = ctx.packageManager.getLaunchIntentForPackage(packageName)
-                            if (intent != null) {
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                ctx.startActivity(intent)
-                                opened = true
-                                break
-                            }
-                        } catch (e: Exception) {
-                            continue
-                        }
-                    }
-                    
-                    if (opened) "💬 Opening messages" else "Messages app not found"
-                } catch (e: Exception) {
-                    "Messages app not found"
-                }
-            },
-            showInChat = true
-        )
-    )
-    
-    actions.add(
-        AppAction(
-            id = "open_contacts",
-            descriptions = listOf("Open contacts", "Contacts", "People", "Address book", "Phone book", "Contact list"),
-            action = { ctx, _ ->
-                try {
-                    // Try to open contacts app by package name
-                    val contactPackages = listOf("com.android.contacts", "com.google.android.contacts", "com.samsung.android.contacts")
-                    var opened = false
-                    
-                    for (packageName in contactPackages) {
-                        try {
-                            val intent = ctx.packageManager.getLaunchIntentForPackage(packageName)
-                            if (intent != null) {
-                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                ctx.startActivity(intent)
-                                opened = true
-                                break
-                            }
-                        } catch (e: Exception) {
-                            continue
-                        }
-                    }
-                    
-                    if (opened) "👥 Opening contacts" else "Contacts app not found"
-                } catch (e: Exception) {
-                    "Contacts app not found"
-                }
-            },
-            showInChat = true
-        )
-    )
+    // Note: Contacts action removed to prevent interference with RAG functionality
     
     actions.add(
         AppAction(

@@ -571,17 +571,21 @@ fun ChatScreen(
                         }
 
                         // Actions toggle switch
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Actions",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Switch(
-                                checked = actionsEnabled,
-                                onCheckedChange = { chatViewModel.toggleActionsEnabled() },
-                                modifier = Modifier.padding(start = 4.dp, end = 8.dp)
-                            )
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Actions",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Switch(
+                                    checked = actionsEnabled,
+                                    onCheckedChange = { chatViewModel.toggleActionsEnabled() },
+                                    modifier = Modifier.padding(start = 4.dp, end = 8.dp)
+                                )
+                            }
+                            
+
                         }
 
                         // Chat menu
@@ -610,6 +614,14 @@ fun ChatScreen(
                                     onClick = {
                                         showClearHistoryDialog = true
                                         showChatMenu = false
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Debug Context Status") },
+                                    onClick = {
+                                        chatViewModel.debugContextStatus()
+                                        showChatMenu = false
+                                        Toast.makeText(context, "Context status logged to console", Toast.LENGTH_SHORT).show()
                                     }
                                 )
                             }
@@ -794,8 +806,8 @@ fun ChatScreen(
                                         text = when (llmState) {
                                             is LLMInitializationState.Initialized -> "Ask a question..."
                                         LLMInitializationState.Initializing -> "LLM is initializing..."
-                                        is LLMInitializationState.Error -> "LLM failed to initialize"
-                                        LLMInitializationState.NotInitialized -> "LLM not initialized"
+                                        is LLMInitializationState.Error -> "Type a message or try actions like 'open camera'"
+                                        LLMInitializationState.NotInitialized -> "Type a message or try actions like 'open camera'"
                                         }
                                     )
                                 },
@@ -834,33 +846,17 @@ fun ChatScreen(
                                     modifier = Modifier
                                         .size(48.dp)
                                         .background(
-                                            if (isLlmReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            MaterialTheme.colorScheme.primary,
                                             CircleShape
                                         ),
-                                    enabled = isLlmReady,
+                                    enabled = true, // Always enabled - ChatViewModel handles LLM availability
                             onClick = {
                                 keyboardController?.hide()
-                                if (isDocumentContextEnabled && !chatViewModel.checkNumDocuments()) {
-                                            Toast.makeText(
-                                                context,
-                                                "Add documents to execute queries when document context is enabled",
-                                                Toast.LENGTH_LONG
-                                            ).show()
-                                    return@IconButton
-                                }
+                                // Document context check removed - ChatViewModel handles this gracefully
 
-                                // Check if any LLM is available (local or remote)
-                                if (!chatViewModel.isLocalModelAvailable() && !chatViewModel.isRemoteModelAvailable()) {
-                                    createAlertDialog(
-                                        dialogTitle = "No LLM Available",
-                                        dialogText = "Please download a local model or configure a Gemini API key to use the app.",
-                                        dialogPositiveButtonText = "Download Local Model",
-                                        onPositiveButtonClick = onModelDownloadClick,
-                                        dialogNegativeButtonText = "Add API Key",
-                                        onNegativeButtonClick = onEditAPIKeyClick,
-                                    )
-                                    return@IconButton
-                                }
+                                // Check if any LLM is available (local or remote) only for non-action queries
+                                // Actions can work without LLM, so we'll let the ChatViewModel handle this
+                                // The ChatViewModel will check for actions first, and only require LLM for non-action queries
 
                                 if (questionText.trim().isEmpty()) {
                                     Toast.makeText(context, "Enter a query to execute", Toast.LENGTH_LONG).show()

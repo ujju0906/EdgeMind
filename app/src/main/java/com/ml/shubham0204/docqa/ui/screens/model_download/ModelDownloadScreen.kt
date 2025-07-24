@@ -494,7 +494,7 @@ fun ModelDownloadScreen(
                                 Spacer(modifier = Modifier.height(8.dp))
                                 
                                 Text(
-                                    text = "Download the local LLM model to use the app without an internet connection.",
+                                    text = "Download the local LLM model to use AI features without an internet connection. Note: Actions like opening apps, controlling device settings, and system functions will still work even without the model.",
                                     style = MaterialTheme.typography.bodyMedium,
                                     textAlign = TextAlign.Center,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -645,17 +645,30 @@ fun ModelDownloadScreen(
                     }
                     
                     else -> {
-                        Button(
-                            onClick = { checkPermissionsAndDownload() },
-                            modifier = Modifier.fillMaxWidth()
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.CloudDownload,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
+                            Button(
+                                onClick = { checkPermissionsAndDownload() },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CloudDownload,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Download Model")
+                            }
+                            
+                            Spacer(modifier = Modifier.height(12.dp))
+                            
+                            Text(
+                                text = "💡 Tip: You can still use actions (opening apps, device controls) even without downloading the model!",
+                                style = MaterialTheme.typography.bodySmall,
+                                textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Download Model")
                         }
                     }
                 }
