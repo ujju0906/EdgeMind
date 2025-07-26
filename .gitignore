@@ -1,1 +1,1 @@
-@"*.apk*.dm*.log/local.properties/app/release//.vscode//.idea/.gradle/build/*/build/output-metadata.json"@ | Out-File -Encoding ascii .gitignore
+*.apk*.dm*.log*.iml.DS_Store/local.properties/output-metadata.json/app/release//.gradle//.vscode//.idea//build//*/build/
