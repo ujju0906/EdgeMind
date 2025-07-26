@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Warning
@@ -227,8 +228,9 @@ fun ModelDownloadScreen(
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                // Download Progress (if downloading)
-                if (downloadState is ModelDownloadViewModel.DownloadState.Downloading) {
+                // Download Progress (if downloading or paused)
+                if (downloadState is ModelDownloadViewModel.DownloadState.Downloading || 
+                    downloadState is ModelDownloadViewModel.DownloadState.Paused) {
                     val downloadingModel = viewModel.getCurrentDownloadingModel()
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -244,15 +246,33 @@ fun ModelDownloadScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    strokeWidth = 2.dp
-                                )
-                                Text(
-                                    text = "Downloading ${downloadingModel?.name ?: "Model"}",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
+                                when (downloadState) {
+                                    is ModelDownloadViewModel.DownloadState.Paused -> {
+                                        Icon(
+                                            imageVector = Icons.Default.Pause,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp),
+                                            tint = MaterialTheme.colorScheme.tertiary
+                                        )
+                                        Text(
+                                            text = "Paused - ${(downloadState as ModelDownloadViewModel.DownloadState.Paused).reason}",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.tertiary
+                                        )
+                                    }
+                                    else -> {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                        Text(
+                                            text = "Downloading ${downloadingModel?.name ?: "Model"}",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
                             }
                             
                             Spacer(modifier = Modifier.height(8.dp))
@@ -295,17 +315,19 @@ fun ModelDownloadScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(availableModels) { model ->
-                                                 ModelCard(
-                             model = model,
-                             isDownloading = downloadState is ModelDownloadViewModel.DownloadState.Downloading && 
-                                           (downloadState as ModelDownloadViewModel.DownloadState.Downloading).modelId == model.id,
-                             onDownload = { checkPermissionsAndDownload(model.id) },
-                             onDelete = { showDeleteConfirmation = model },
-                             onLoad = { 
-                                 viewModel.loadModel(model.id)
-                                 onBackClick()
-                             }
-                         )
+                                                                         ModelCard(
+                            model = model,
+                            isDownloading = downloadState is ModelDownloadViewModel.DownloadState.Downloading && 
+                                          (downloadState as ModelDownloadViewModel.DownloadState.Downloading).modelId == model.id,
+                            isPaused = downloadState is ModelDownloadViewModel.DownloadState.Paused && 
+                                     (downloadState as ModelDownloadViewModel.DownloadState.Paused).modelId == model.id,
+                            onDownload = { checkPermissionsAndDownload(model.id) },
+                            onDelete = { showDeleteConfirmation = model },
+                            onLoad = { 
+                                viewModel.loadModel(model.id)
+                                onBackClick()
+                            }
+                        )
                     }
                 }
             }
@@ -461,6 +483,7 @@ fun ModelDownloadScreen(
 fun ModelCard(
     model: ModelInfo,
     isDownloading: Boolean,
+    isPaused: Boolean,
     onDownload: () -> Unit,
     onDelete: () -> Unit,
     onLoad: () -> Unit
@@ -499,6 +522,14 @@ fun ModelCard(
                 
                 // Status Icon
                 when {
+                    isPaused -> {
+                        Icon(
+                            imageVector = Icons.Default.Pause,
+                            contentDescription = "Paused",
+                            tint = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                     isDownloading -> {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
@@ -597,6 +628,16 @@ fun ModelCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 when {
+                    isPaused -> {
+                        // Show waiting message
+                        Text(
+                            text = "Waiting for network...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                     isDownloading -> {
                         // Show cancel button
                         Button(

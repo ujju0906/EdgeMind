@@ -187,62 +187,56 @@ class ChatViewModel(
         }
         
         viewModelScope.launch {
-            // Note: SMS and phone call actions have been removed to prevent interference with RAG functionality
-            // Queries about SMS and calls will now properly go to the LLM for RAG processing
-            
-            // Always check for actions first, regardless of LLM availability
-            Log.d("ChatViewModel", "Checking for actions with query: '$query'")
-            val action = actionMatcher.findBestAction(query)
-            Log.d("ChatViewModel", "Action found: ${action?.id ?: "none"}")
-            if (action != null) {
-                if (!_actionsEnabled.value) {
-                    // Actions are disabled, show message in chat
+            // Check for actions ONLY if actions are enabled
+            if (_actionsEnabled.value) {
+                Log.d("ChatViewModel", "Actions enabled, checking for actions with query: '$query'")
+                val action = actionMatcher.findBestAction(query)
+                Log.d("ChatViewModel", "Action found: ${action?.id ?: "none"}")
+                
+                if (action != null) {
+                    Log.d("ChatViewModel", "Executing action: ${action.id}")
+                    val actionResult = actionMatcher.executeAction(action, query)
+                    
+                    // Check if this is a permission request
+                    when (actionResult) {
+                        "PERMISSION_REQUEST:CAMERA" -> {
+                            chatHistoryDB.saveUserMessage(query)
+                            chatHistoryDB.saveMessage(query, "🪄 Camera permission needed for this spell! Please allow camera access when prompted.", "Action: Permission Request")
+                            loadChatHistory()
+                            _questionState.value = query
+                            _responseState.value = "🪄 Camera permission needed for this spell! Please allow camera access when prompted."
+                            
+                            // Request camera permission
+                            requestCameraPermission()
+                            return@launch
+                        }
+                        "PERMISSION_REQUEST:MEDIA" -> {
+                            chatHistoryDB.saveUserMessage(query)
+                            chatHistoryDB.saveMessage(query, "🖼️ Media permission needed for this action! Please allow media access when prompted.", "Action: Permission Request")
+                            loadChatHistory()
+                            _questionState.value = query
+                            _responseState.value = "🖼️ Media permission needed for this action! Please allow media access when prompted."
+                            
+                            // Request media permission
+                            requestMediaPermission()
+                            return@launch
+                        }
+                    }
+                    
+                    Log.d("ChatViewModel", "Action executed successfully: ${action.id}")
                     chatHistoryDB.saveUserMessage(query)
-                    chatHistoryDB.saveMessage(query, "[Actions are currently disabled. Enable actions to use this feature.]", "Action: Blocked")
+                    chatHistoryDB.saveMessage(query, actionResult, "Action: ${action.javaClass.simpleName}")
                     loadChatHistory()
                     _questionState.value = query
-                    _responseState.value = "[Actions are currently disabled. Enable actions to use this feature.]"
+                    _responseState.value = actionResult
                     return@launch
                 }
-                
-                val actionResult = actionMatcher.executeAction(action, query)
-                
-                // Check if this is a permission request
-                when (actionResult) {
-                    "PERMISSION_REQUEST:CAMERA" -> {
-                        chatHistoryDB.saveUserMessage(query)
-                        chatHistoryDB.saveMessage(query, "🪄 Camera permission needed for this spell! Please allow camera access when prompted.", "Action: Permission Request")
-                        loadChatHistory()
-                        _questionState.value = query
-                        _responseState.value = "🪄 Camera permission needed for this spell! Please allow camera access when prompted."
-                        
-                        // Request camera permission
-                        requestCameraPermission()
-                        return@launch
-                    }
-                    // Note: SMS and CALL_LOG permission requests removed as those actions are no longer available
-                    "PERMISSION_REQUEST:MEDIA" -> {
-                        chatHistoryDB.saveUserMessage(query)
-                        chatHistoryDB.saveMessage(query, "🖼️ Media permission needed for this action! Please allow media access when prompted.", "Action: Permission Request")
-                        loadChatHistory()
-                        _questionState.value = query
-                        _responseState.value = "🖼️ Media permission needed for this action! Please allow media access when prompted."
-                        
-                        // Request media permission
-                        requestMediaPermission()
-                        return@launch
-                    }
-                }
-                
-                chatHistoryDB.saveUserMessage(query)
-                chatHistoryDB.saveMessage(query, actionResult, "Action: ${action.javaClass.simpleName}")
-                loadChatHistory()
-                _questionState.value = query
-                _responseState.value = actionResult
-                return@launch
+            } else {
+                Log.d("ChatViewModel", "Actions disabled, proceeding directly to LLM/RAG processing")
             }
 
-            // For non-action queries, check LLM availability and handle appropriately
+            // Proceed with LLM/RAG processing for all queries when actions are disabled or no action found
+            Log.d("ChatViewModel", "Proceeding with LLM/RAG processing for query: '$query'")
             val llmAvailable = isLocalModelAvailable() || isRemoteModelAvailable()
             val llmInitialized = isLLMInitialized()
             
@@ -255,9 +249,9 @@ class ChatViewModel(
                 _questionState.value = query
                 
                 val helpfulMessage = if (!llmAvailable) {
-                    "I can't process this query because no language model is available. Please download a local model or configure a Gemini API key to use AI features. However, you can still use actions like opening apps, controlling device settings, and other system functions. Try commands like 'open camera', 'turn on flashlight', or 'open settings'."
+                    "I can't process this query because no language model is available. Please download a local model or configure a Gemini API key to use AI features. You can also enable actions in the top bar to use device functions like opening apps, controlling settings, and using the flashlight."
                 } else {
-                    "I'm having trouble initializing the language model right now. Please try again in a moment, or use actions like 'open camera', 'turn on flashlight', or 'open settings'."
+                    "I'm having trouble initializing the language model right now. Please try again in a moment. You can also enable actions in the top bar to use device functions."
                 }
                 
                 chatHistoryDB.saveMessage(query, helpfulMessage, "LLM: Not Available")

@@ -58,7 +58,15 @@ class ModelDownloadViewModel(
                 if (activeWork != null) {
                     currentWorkId = activeWork.id
                     currentDownloadingModelId = activeWork.progress.getString(ModelDownloadWorker.KEY_MODEL_ID)
-                    _downloadState.value = DownloadState.Downloading(currentDownloadingModelId ?: "")
+                    
+                    val isPaused = activeWork.progress.getBoolean(ModelDownloadWorker.KEY_IS_PAUSED, false)
+                    if (isPaused) {
+                        val pauseReason = activeWork.progress.getString(ModelDownloadWorker.KEY_PAUSE_REASON) ?: "Unknown"
+                        _downloadState.value = DownloadState.Paused(currentDownloadingModelId ?: "", pauseReason)
+                    } else {
+                        _downloadState.value = DownloadState.Downloading(currentDownloadingModelId ?: "")
+                    }
+                    
                     val progress = activeWork.progress.getInt(ModelDownloadWorker.KEY_PROGRESS, 0)
                     _downloadProgress.value = progress / 100f
                 }
@@ -100,7 +108,13 @@ class ModelDownloadViewModel(
                 workInfo?.let { info ->
                     when (info.state) {
                         WorkInfo.State.RUNNING -> {
-                            _downloadState.value = DownloadState.Downloading(modelId)
+                            val isPaused = info.progress.getBoolean(ModelDownloadWorker.KEY_IS_PAUSED, false)
+                            if (isPaused) {
+                                val pauseReason = info.progress.getString(ModelDownloadWorker.KEY_PAUSE_REASON) ?: "Unknown"
+                                _downloadState.value = DownloadState.Paused(modelId, pauseReason)
+                            } else {
+                                _downloadState.value = DownloadState.Downloading(modelId)
+                            }
                             val progress = info.progress.getInt(ModelDownloadWorker.KEY_PROGRESS, 0)
                             _downloadProgress.value = progress / 100f
                         }
@@ -238,6 +252,7 @@ class ModelDownloadViewModel(
     sealed class DownloadState {
         object Idle : DownloadState()
         data class Downloading(val modelId: String) : DownloadState()
+        data class Paused(val modelId: String, val reason: String) : DownloadState()
         data class Success(val modelId: String) : DownloadState()
         object Cancelled : DownloadState()
         data class Error(val message: String) : DownloadState()
