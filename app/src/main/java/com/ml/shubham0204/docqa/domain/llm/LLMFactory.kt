@@ -14,13 +14,13 @@ class LLMFactory(
         REMOTE
     }
     
-    fun create(type: LLMType): LLMProvider {
+    fun create(type: LLMType, modelId: String? = null): LLMProvider {
         return when (type) {
             LLMType.LOCAL -> {
                 if (!modelManager.isModelDownloaded()) {
-                    throw IllegalStateException("Model not available locally")
+                    throw IllegalStateException("No models are available locally")
                 }
-                LocalLLMAPI(context, modelManager)
+                LocalLLMAPI(context, modelManager, modelId)
             }
             LLMType.REMOTE -> {
                 val apiKey = geminiAPIKey.getAPIKey() 
@@ -36,5 +36,21 @@ class LLMFactory(
     
     fun isRemoteModelAvailable(): Boolean {
         return geminiAPIKey.getAPIKey() != null
+    }
+    
+    fun getAvailableLocalModels(): List<ModelInfo> {
+        return modelManager.getAvailableModels()
+    }
+    
+    fun getDownloadedModels(): List<ModelInfo> {
+        return modelManager.getDownloadedModels()
+    }
+    
+    fun isModelDownloaded(modelId: String): Boolean {
+        return modelManager.isModelDownloaded(modelId)
+    }
+    
+    fun getModelInfo(modelId: String): ModelInfo? {
+        return modelManager.getModelInfo(modelId)
     }
 } 

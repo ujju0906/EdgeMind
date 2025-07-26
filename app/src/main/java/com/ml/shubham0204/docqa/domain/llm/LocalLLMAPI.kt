@@ -12,24 +12,48 @@ import kotlinx.coroutines.withContext
 
 class LocalLLMAPI(
     private val context: Context,
-    private val modelManager: ModelManager
+    private val modelManager: ModelManager,
+    private var currentModelId: String? = null
 ) : LLMProvider {
     private var llmInference: LlmInference? = null
     private var isGenerating = false
     private var isCancelled = false
 
     override suspend fun init() {
-        if (llmInference != null) {
+        Log.d("LocalLLMAPI", "=== INIT REQUESTED ===")
+        Log.d("LocalLLMAPI", "Current model ID: $currentModelId")
+        Log.d("LocalLLMAPI", "LLM Inference exists: ${llmInference != null}")
+        
+        if (llmInference != null && currentModelId != null) {
+            Log.d("LocalLLMAPI", "Already initialized with model: $currentModelId")
             return
         }
         
         return withContext(Dispatchers.IO) {
             try {
-                Log.d("AppLifecycle", "LocalLLMAPI: Model loading started.")
+                // If no specific model is set, use the first available downloaded model
+                if (currentModelId == null) {
+                    Log.d("LocalLLMAPI", "No model specified, looking for available models...")
+                    val downloadedModels = modelManager.getDownloadedModels()
+                    if (downloadedModels.isNotEmpty()) {
+                        currentModelId = downloadedModels.first().id
+                        Log.d("LocalLLMAPI", "Auto-selected model: $currentModelId")
+                    } else {
+                        Log.e("LocalLLMAPI", "No models are downloaded!")
+                        throw IllegalStateException("No models are downloaded, cannot initialize LocalLLMAPI")
+                    }
+                }
+                
+                Log.d("LocalLLMAPI", "=== MODEL LOADING STARTED ===")
+                Log.d("LocalLLMAPI", "Loading model: ${currentModelId}")
                 val startTime = System.currentTimeMillis()
-                val modelPath = modelManager.getModelPath()
-                if (!modelManager.isModelDownloaded()) {
-                    throw IllegalStateException("Model is not downloaded, cannot initialize LocalLLMAPI")
+                
+                val modelPath = modelManager.getModelPath(currentModelId!!)
+                Log.d("LocalLLMAPI", "Model path: $modelPath")
+                
+                if (modelPath == null || !modelManager.isModelDownloaded(currentModelId!!)) {
+                    Log.e("LocalLLMAPI", "Model ${currentModelId} is not downloaded!")
+                    throw IllegalStateException("Model ${currentModelId} is not downloaded, cannot initialize LocalLLMAPI")
                 }
                 
                 // Set the configuration options for the LLM Inference task
@@ -40,23 +64,67 @@ class LocalLLMAPI(
                         .build()
 
                 // Create an instance of the LLM Inference task
+                Log.d("LocalLLMAPI", "Creating LlmInference instance...")
                 llmInference = LlmInference.createFromOptions(context, taskOptions)
                 val endTime = System.currentTimeMillis()
-                Log.d("AppLifecycle", "LocalLLMAPI: Model loading finished in ${endTime - startTime}ms")
+                Log.d("LocalLLMAPI", "=== MODEL LOADING COMPLETED ===")
+                Log.d("LocalLLMAPI", "Loading time: ${endTime - startTime}ms")
+                Log.d("LocalLLMAPI", "Model loaded: ${currentModelId}")
+                Log.d("LocalLLMAPI", "LLM Inference instance created successfully")
             } catch (e: Exception) {
                 Log.e("LocalLLMAPI", "Failed to initialize LLM: ${e.message}", e)
                 // Clean up on failure
                 llmInference?.close()
                 llmInference = null
+                currentModelId = null
                 throw e
             }
         }
     }
 
+    suspend fun loadModel(modelId: String) {
+        Log.d("LocalLLMAPI", "=== LOAD MODEL REQUESTED ===")
+        Log.d("LocalLLMAPI", "Current model: $currentModelId")
+        Log.d("LocalLLMAPI", "Target model: $modelId")
+        
+        if (currentModelId == modelId && llmInference != null) {
+            Log.d("LocalLLMAPI", "Model $modelId is already loaded, skipping...")
+            return
+        }
+        
+        // Close existing model if different
+        if (llmInference != null && currentModelId != modelId) {
+            Log.d("LocalLLMAPI", "Unloading current model $currentModelId to load $modelId")
+            close()
+        }
+        
+        Log.d("LocalLLMAPI", "Setting current model to: $modelId")
+        currentModelId = modelId
+        Log.d("LocalLLMAPI", "Initializing model...")
+        init()
+        Log.d("LocalLLMAPI", "=== LOAD MODEL COMPLETED ===")
+        Log.d("LocalLLMAPI", "Current model after load: $currentModelId")
+    }
+
+    suspend fun unloadModel() {
+        close()
+    }
+
+    fun getCurrentModelId(): String? = currentModelId
+
+    fun getCurrentModelInfo(): ModelInfo? {
+        return currentModelId?.let { modelManager.getModelInfo(it) }
+    }
+
     override fun generateResponse(prompt: String): Flow<String> =
         callbackFlow {
             try {
+                Log.d("LocalLLMAPI", "=== GENERATE RESPONSE REQUESTED ===")
+                Log.d("LocalLLMAPI", "Current model: $currentModelId")
+                Log.d("LocalLLMAPI", "LLM Inference exists: ${llmInference != null}")
+                
                 if (llmInference == null) {
+                    Log.e("LocalLLMAPI", "LLM not initialized!")
                     throw IllegalStateException("LLM not initialized. Call init() first.")
                 }
                 
@@ -64,8 +132,8 @@ class LocalLLMAPI(
                 isCancelled = false
                 isGenerating = true
                 
-                Log.d("AppPerformance", "Starting: Local LLM Inference")
-                Log.d("LocalLLMAPI", "Generating response for prompt length: ${prompt.length}")
+                Log.d("LocalLLMAPI", "Starting inference with model: ${currentModelId}")
+                Log.d("LocalLLMAPI", "Prompt length: ${prompt.length}")
 
                 // Generate response using the local model with proper error handling
                 try {
@@ -130,12 +198,13 @@ class LocalLLMAPI(
             llmInference?.let { inference ->
                 try {
                     inference.close()
-                    Log.d("LocalLLMAPI", "LLM inference closed successfully")
+                    Log.d("LocalLLMAPI", "LLM inference closed successfully for model ${currentModelId}")
                 } catch (e: Exception) {
                     Log.e("LocalLLMAPI", "Error closing LLM inference: ${e.message}", e)
                 }
             }
             llmInference = null
+            currentModelId = null
             Log.d("LocalLLMAPI", "LLM closed successfully")
         } catch (e: Exception) {
             Log.e("LocalLLMAPI", "Error closing LLM: ${e.message}", e)
@@ -144,14 +213,15 @@ class LocalLLMAPI(
     
     // Add method to check if LLM is in a valid state
     fun isInitialized(): Boolean {
-        return llmInference != null
+        return llmInference != null && currentModelId != null
     }
     
     // Add method to get memory usage info
-    fun getMemoryInfo(): String {
-        val runtime = Runtime.getRuntime()
-        val usedMemory = (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024
-        val maxMemory = runtime.maxMemory() / 1024 / 1024
-        return "Used: ${usedMemory}MB, Max: ${maxMemory}MB"
+    fun getMemoryUsageInfo(): String {
+        return "Model: ${currentModelId ?: "None"}, Initialized: ${isInitialized()}"
+    }
+    
+    fun getCurrentModelName(): String {
+        return currentModelId?.let { modelManager.getModelInfo(it)?.name } ?: "None"
     }
 } 

@@ -18,6 +18,10 @@ class DocQAApplication : Application() {
             modules(appModule)
         }
         ObjectBoxStore.init(this)
-        AppLLMProvider.initialize(get())
+        // Initialize LLM with the first available downloaded model
+        val llmFactory: LLMFactory = get()
+        val downloadedModels = llmFactory.getDownloadedModels()
+        val modelId = if (downloadedModels.isNotEmpty()) downloadedModels.first().id else null
+        AppLLMProvider.initialize(llmFactory, modelId)
     }
 }

@@ -11,15 +11,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -36,7 +41,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -51,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ml.shubham0204.docqa.domain.llm.ModelInfo
 import com.ml.shubham0204.docqa.ui.components.PermissionHelper
 import com.ml.shubham0204.docqa.ui.components.RequestNotificationPermission
 import com.ml.shubham0204.docqa.ui.theme.DocQATheme
@@ -65,11 +70,13 @@ fun ModelDownloadScreen(
     val viewModel: ModelDownloadViewModel = koinViewModel()
     val downloadState by viewModel.downloadState.collectAsState()
     val downloadProgress by viewModel.downloadProgress.collectAsState()
-    val isModelDownloaded by viewModel.isModelDownloaded.collectAsState()
-    val modelSize by viewModel.modelSize.collectAsState()
+    val availableModels by viewModel.availableModels.collectAsState()
+    val downloadedModels by viewModel.downloadedModels.collectAsState()
+    val totalDownloadedSize by viewModel.totalDownloadedSize.collectAsState()
     val deleteState by viewModel.deleteState.collectAsState()
     
-    var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf<ModelInfo?>(null) }
+    var showDeleteAllConfirmation by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
     var shouldRequestNotificationPermission by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -78,12 +85,12 @@ fun ModelDownloadScreen(
     RequestNotificationPermission()
     
     // Check permissions before download
-    fun checkPermissionsAndDownload() {
+    fun checkPermissionsAndDownload(modelId: String) {
         val hasStoragePermission = PermissionHelper.hasStoragePermission(context)
         val hasNotificationPermission = PermissionHelper.hasNotificationPermission(context)
         
         if (hasStoragePermission && hasNotificationPermission) {
-            viewModel.downloadModel()
+            viewModel.downloadModel(modelId)
         } else {
             showPermissionDialog = true
         }
@@ -98,7 +105,7 @@ fun ModelDownloadScreen(
                     // Try download again after permission is granted
                     val hasStoragePermission = PermissionHelper.hasStoragePermission(context)
                     if (hasStoragePermission) {
-                        viewModel.downloadModel()
+                        // Note: We can't resume the specific download here, user will need to retry
                     } else {
                         showPermissionDialog = true
                     }
@@ -113,7 +120,7 @@ fun ModelDownloadScreen(
                 TopAppBar(
                     title = { 
                         Text(
-                            text = "Local LLM Model", 
+                            text = "Local LLM Models", 
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.SemiBold
                         ) 
@@ -132,40 +139,14 @@ fun ModelDownloadScreen(
                         }
                     },
                     actions = {
-                        // Show download icon only when model is not downloaded and not currently downloading
-                        if (!isModelDownloaded && downloadState !is ModelDownloadViewModel.DownloadState.Downloading) {
+                        // Show delete all button if there are downloaded models
+                        if (downloadedModels.isNotEmpty() && deleteState !is ModelDownloadViewModel.DeleteState.Deleting) {
                             IconButton(
-                                onClick = { checkPermissionsAndDownload() }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CloudDownload,
-                                    contentDescription = "Download Model",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                        // Show cancel icon when downloading
-                        if (downloadState is ModelDownloadViewModel.DownloadState.Downloading) {
-                            IconButton(
-                                onClick = { viewModel.cancelDownload() }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Cancel,
-                                    contentDescription = "Cancel Download",
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                        // Show delete icon when model is downloaded and not currently deleting
-                        if (isModelDownloaded && deleteState !is ModelDownloadViewModel.DeleteState.Deleting) {
-                            IconButton(
-                                onClick = { showDeleteConfirmation = true }
+                                onClick = { showDeleteAllConfirmation = true }
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete Model",
+                                    contentDescription = "Delete All Models",
                                     tint = MaterialTheme.colorScheme.error,
                                     modifier = Modifier.size(20.dp)
                                 )
@@ -180,82 +161,62 @@ fun ModelDownloadScreen(
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background)
                     .padding(innerPadding)
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(16.dp)
             ) {
-                // Model Info Card
+                // Summary Card
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier.padding(16.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Storage,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Storage Summary",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                         
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Text(
-                            text = "Qwen-1.8B",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Text(
-                            text = "Local Language Model",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Column {
                                 Text(
-                                    text = if (modelSize > 0) "%.1f GB".format(modelSize / 1024f) else "~1.8 GB",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                                    text = "${downloadedModels.size}",
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    text = "Model Size",
+                                    text = "Models Downloaded",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Column(horizontalAlignment = Alignment.End) {
                                 Text(
-                                    text = "1.8B",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                                    text = "%.1f MB".format(totalDownloadedSize),
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                                 Text(
-                                    text = "Parameters",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "4-bit",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "Quantization",
+                                    text = "Total Size",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -264,421 +225,96 @@ fun ModelDownloadScreen(
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 
-                // Status Card
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(
-                        modifier = Modifier.padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                // Download Progress (if downloading)
+                if (downloadState is ModelDownloadViewModel.DownloadState.Downloading) {
+                    val downloadingModel = viewModel.getCurrentDownloadingModel()
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
                     ) {
-                        when {
-                            deleteState is ModelDownloadViewModel.DeleteState.Deleting -> {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(48.dp),
-                                    color = MaterialTheme.colorScheme.error
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
                                 )
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
                                 Text(
-                                    text = "Deleting Model",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                Text(
-                                    text = "Please wait while the model is being deleted...",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    text = "Downloading ${downloadingModel?.name ?: "Model"}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                             
-                            deleteState is ModelDownloadViewModel.DeleteState.Success -> {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(48.dp),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                Text(
-                                    text = "Model Deleted",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                Text(
-                                    text = "The local LLM model has been successfully deleted.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            Spacer(modifier = Modifier.height(8.dp))
                             
-                            deleteState is ModelDownloadViewModel.DeleteState.Error -> {
-                                Icon(
-                                    imageVector = Icons.Default.Error,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(48.dp),
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                Text(
-                                    text = "Delete Failed",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                Text(
-                                    text = (deleteState as ModelDownloadViewModel.DeleteState.Error).message,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            LinearProgressIndicator(
+                                progress = { downloadProgress },
+                                modifier = Modifier.fillMaxWidth()
+                            )
                             
-                            isModelDownloaded -> {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(48.dp),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                Text(
-                                    text = "Model Ready",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                Text(
-                                    text = "The local LLM model is downloaded and ready to use.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            Spacer(modifier = Modifier.height(4.dp))
                             
-                            downloadState is ModelDownloadViewModel.DownloadState.Downloading -> {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(48.dp),
-                                )
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                Text(
-                                    text = "Downloading Model",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                Text(
-                                    text = "Please wait while the model downloads. This may take several minutes. You can continue using other apps while it downloads in the background.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                LinearProgressIndicator(
-                                    progress = { downloadProgress },
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
                                 Text(
                                     text = "${(downloadProgress * 100).toInt()}%",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            
-                            downloadState is ModelDownloadViewModel.DownloadState.Cancelled -> {
-                                Icon(
-                                    imageVector = Icons.Default.Cancel,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(48.dp),
-                                    tint = MaterialTheme.colorScheme.tertiary
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium
                                 )
                                 
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                Text(
-                                    text = "Download Cancelled",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.tertiary
-                                )
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                Text(
-                                    text = "The download was cancelled. You can start it again when ready.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            
-                            downloadState is ModelDownloadViewModel.DownloadState.Error -> {
-                                Icon(
-                                    imageVector = Icons.Default.Error,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(48.dp),
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                Text(
-                                    text = "Download Failed",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                Text(
-                                    text = (downloadState as ModelDownloadViewModel.DownloadState.Error).message,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            
-                            else -> {
-                                Icon(
-                                    imageVector = Icons.Default.CloudDownload,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(48.dp),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                Text(
-                                    text = "Model Not Downloaded",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                Text(
-                                    text = "Download the local LLM model to use AI features without an internet connection. Note: Actions like opening apps, controlling device settings, and system functions will still work even without the model.",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Button(
+                                    onClick = { viewModel.cancelDownload() },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.error
+                                    ),
+                                    modifier = Modifier.height(32.dp)
+                                ) {
+                                    Text("Cancel", fontSize = 12.sp)
+                                }
                             }
                         }
                     }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
                 
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                // Action Buttons
-                when {
-                    deleteState is ModelDownloadViewModel.DeleteState.Deleting -> {
-                        // Show nothing while deleting
-                    }
-                    
-                    deleteState is ModelDownloadViewModel.DeleteState.Success -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = { viewModel.resetDeleteState() },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("OK")
-                            }
-                            
-                            Button(
-                                onClick = { checkPermissionsAndDownload() },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CloudDownload,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Download Again")
-                            }
-                        }
-                    }
-                    
-                    deleteState is ModelDownloadViewModel.DeleteState.Error -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = { viewModel.resetDeleteState() },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("OK")
-                            }
-                            
-                            Button(
-                                onClick = { viewModel.deleteModel() },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Retry Delete")
-                            }
-                        }
-                    }
-                    
-                    isModelDownloaded -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = { onBackClick() },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Back to Chat")
-                            }
-                            
-                            Button(
-                                onClick = { showDeleteConfirmation = true },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Delete Model")
-                            }
-                        }
-                    }
-                    
-                    downloadState is ModelDownloadViewModel.DownloadState.Downloading -> {
-                        Button(
-                            onClick = { viewModel.cancelDownload() },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Cancel,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Cancel Download")
-                        }
-                    }
-                    
-                    downloadState is ModelDownloadViewModel.DownloadState.Cancelled -> {
-                        Button(
-                            onClick = { checkPermissionsAndDownload() },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CloudDownload,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Download Model")
-                        }
-                    }
-                    
-                    downloadState is ModelDownloadViewModel.DownloadState.Error -> {
-                        Button(
-                            onClick = {
-                                viewModel.resetDownloadState()
-                                checkPermissionsAndDownload()
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Retry Download")
-                        }
-                    }
-                    
-                    else -> {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Button(
-                                onClick = { checkPermissionsAndDownload() },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CloudDownload,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Download Model")
-                            }
-                            
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            Text(
-                                text = "💡 Tip: You can still use actions (opening apps, device controls) even without downloading the model!",
-                                style = MaterialTheme.typography.bodySmall,
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                // Models List
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(availableModels) { model ->
+                                                 ModelCard(
+                             model = model,
+                             isDownloading = downloadState is ModelDownloadViewModel.DownloadState.Downloading && 
+                                           (downloadState as ModelDownloadViewModel.DownloadState.Downloading).modelId == model.id,
+                             onDownload = { checkPermissionsAndDownload(model.id) },
+                             onDelete = { showDeleteConfirmation = model },
+                             onLoad = { 
+                                 viewModel.loadModel(model.id)
+                                 onBackClick()
+                             }
+                         )
                     }
                 }
             }
         }
         
         // Delete Confirmation Dialog
-        if (showDeleteConfirmation) {
+        showDeleteConfirmation?.let { model ->
             AlertDialog(
-                onDismissRequest = { showDeleteConfirmation = false },
+                onDismissRequest = { showDeleteConfirmation = null },
                 title = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -699,15 +335,15 @@ fun ModelDownloadScreen(
                 },
                 text = {
                     Text(
-                        text = "Are you sure you want to delete the local LLM model? This action cannot be undone and you'll need to download it again to use local AI features.",
+                        text = "Are you sure you want to delete ${model.name}? This action cannot be undone.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 },
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            showDeleteConfirmation = false
-                            viewModel.deleteModel()
+                            showDeleteConfirmation = null
+                            viewModel.deleteModel(model.id)
                         },
                         colors = ButtonDefaults.textButtonColors(
                             contentColor = MaterialTheme.colorScheme.error
@@ -717,7 +353,56 @@ fun ModelDownloadScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeleteConfirmation = false }) {
+                    TextButton(onClick = { showDeleteConfirmation = null }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+        
+        // Delete All Confirmation Dialog
+        if (showDeleteAllConfirmation) {
+            AlertDialog(
+                onDismissRequest = { showDeleteAllConfirmation = false },
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = "Delete All Models",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                },
+                text = {
+                    Text(
+                        text = "Are you sure you want to delete all downloaded models? This action cannot be undone.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showDeleteAllConfirmation = false
+                            viewModel.deleteAllModels()
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Text("Delete All", fontWeight = FontWeight.SemiBold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteAllConfirmation = false }) {
                         Text("Cancel")
                     }
                 }
@@ -748,7 +433,7 @@ fun ModelDownloadScreen(
                 },
                 text = {
                     Text(
-                        text = "This app needs storage and notification permissions to download the AI model. Please grant these permissions in your device settings.",
+                        text = "This app needs storage and notification permissions to download AI models. Please grant these permissions in your device settings.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 },
@@ -768,6 +453,210 @@ fun ModelDownloadScreen(
                     }
                 }
             )
+        }
+    }
+}
+
+@Composable
+fun ModelCard(
+    model: ModelInfo,
+    isDownloading: Boolean,
+    onDownload: () -> Unit,
+    onDelete: () -> Unit,
+    onLoad: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = model.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    Spacer(modifier = Modifier.height(4.dp))
+                    
+                    Text(
+                        text = model.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                // Status Icon
+                when {
+                    isDownloading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    model.isDownloaded -> {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Downloaded",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    else -> {
+                        Icon(
+                            imageVector = Icons.Default.CloudDownload,
+                            contentDescription = "Not Downloaded",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            // Model Specs
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.Storage,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "%.1f GB".format(model.sizeInGB),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Size",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.Memory,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = model.parameters,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Parameters",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = model.quantization,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "Quantization",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Action Buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                when {
+                    isDownloading -> {
+                        // Show cancel button
+                        Button(
+                            onClick = { /* Cancel download handled in parent */ },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Text("Cancel")
+                        }
+                    }
+                    model.isDownloaded -> {
+                        // Show load and delete buttons
+                        OutlinedButton(
+                            onClick = onLoad,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Load")
+                        }
+                        
+                        OutlinedButton(
+                            onClick = onDelete,
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Delete")
+                        }
+                    }
+                    else -> {
+                        // Show download button
+                        Button(
+                            onClick = onDownload,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Download,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Download")
+                        }
+                    }
+                }
+            }
         }
     }
 } 

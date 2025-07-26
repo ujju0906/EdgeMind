@@ -24,14 +24,8 @@ class ModelDownloadWorker(
 
     companion object {
         const val KEY_PROGRESS = "progress"
+        const val KEY_MODEL_ID = "model_id"
         const val TAG = "ModelDownloadWorker"
-//        const val MODEL_URL = "https://huggingface.co/litert-community/TinyLlama-1.1B-Chat-v1.0/resolve/main/TinyLlama-1.1B-Chat-v1.0_multi-prefill-seq_q8_ekv1280.task?download=true"
-//        const val MODEL_FILENAME = "TinyLlama-1.1B-Chat-v1.0_multi-prefill-seq_q8_ekv1280.task"
-//
-//        const val MODEL_URL = "https://huggingface.co/litert-community/Phi-4-mini-instruct/resolve/main/Phi-4-mini-instruct_multi-prefill-seq_q8_ekv1280.task?download=true"
-//        const val MODEL_FILENAME = "Phi-4-mini-instruct_multi-prefill-seq_q8_ekv1280.task"
-        const val MODEL_URL = "https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.task?download=true"
-        const val MODEL_FILENAME = "Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.task"
         const val MODEL_DIR_NAME = "llm"
         // Increased buffer size for better performance
         private const val BUFFER_SIZE = 64 * 1024 // 64KB buffer
@@ -46,6 +40,11 @@ class ModelDownloadWorker(
 
     override suspend fun doWork(): Result {
         return try {
+            // Get model ID from input data
+            val modelId = inputData.getString(KEY_MODEL_ID) ?: "qwen2.5-1.5b"
+            val modelInfo = ModelManager.AVAILABLE_MODELS.find { it.id == modelId }
+                ?: return Result.failure()
+            
             // Create notification channel for Android O and above
             createNotificationChannel()
             
@@ -53,7 +52,7 @@ class ModelDownloadWorker(
             val shouldUseForeground = Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE // Android 15
             if (shouldUseForeground) {
                 try {
-                    setForeground(createForegroundInfo(0))
+                    setForeground(createForegroundInfo(0, modelInfo.name))
                     Log.d(TAG, "Foreground service started successfully")
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to start foreground service: ${e.message}")
@@ -61,6 +60,12 @@ class ModelDownloadWorker(
             } else {
                 Log.d(TAG, "Skipping foreground service for Android 15+ to avoid crashes")
             }
+            
+            // Set initial progress with model ID
+            setProgress(workDataOf(
+                KEY_PROGRESS to 0,
+                KEY_MODEL_ID to modelId
+            ))
             
             // Check and create model directory with proper permissions
             val modelDir = File(applicationContext.filesDir, MODEL_DIR_NAME)
@@ -79,8 +84,8 @@ class ModelDownloadWorker(
                 return Result.failure()
             }
             
-            val modelFile = File(modelDir, MODEL_FILENAME)
-            downloadModelWithProgress(modelFile.absolutePath, shouldUseForeground)
+            val modelFile = File(modelDir, modelInfo.filename)
+            downloadModelWithProgress(modelFile.absolutePath, modelInfo, modelId, shouldUseForeground)
             Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "Model download failed", e)
@@ -88,7 +93,12 @@ class ModelDownloadWorker(
         }
     }
 
-    private suspend fun downloadModelWithProgress(modelPath: String, useForeground: Boolean = true) = withContext(Dispatchers.IO) {
+    private suspend fun downloadModelWithProgress(
+        modelPath: String, 
+        modelInfo: ModelInfo,
+        modelId: String,
+        useForeground: Boolean = true
+    ) = withContext(Dispatchers.IO) {
         val finalModelFile = File(modelPath)
         val tempModelFile = File("$modelPath.tmp")
         try {
@@ -114,10 +124,11 @@ class ModelDownloadWorker(
             }
 
             Log.d(TAG, "Starting model download with progress tracking...")
-            Log.d(TAG, "Download URL: $MODEL_URL")
+            Log.d(TAG, "Model: ${modelInfo.name}")
+            Log.d(TAG, "Download URL: ${modelInfo.url}")
             Log.d(TAG, "Target file: ${finalModelFile.absolutePath}")
             
-            val url = URL(MODEL_URL)
+            val url = URL(modelInfo.url)
             val connection = url.openConnection() as HttpURLConnection
             
             // Optimize connection settings for faster downloads
@@ -155,11 +166,14 @@ class ModelDownloadWorker(
                     val progress = (totalBytesRead * 100 / contentLength).toInt()
                     // Update progress less frequently to reduce overhead
                     if (progress > lastProgressUpdate || totalBytesRead == contentLength) {
-                        setProgress(workDataOf(KEY_PROGRESS to progress))
+                        setProgress(workDataOf(
+                            KEY_PROGRESS to progress,
+                            KEY_MODEL_ID to modelId
+                        ))
                         // Update foreground notification only if enabled and supported
                         if (useForeground) {
                             try {
-                                setForeground(createForegroundInfo(progress))
+                                setForeground(createForegroundInfo(progress, modelInfo.name))
                             } catch (e: Exception) {
                                 Log.w(TAG, "Failed to update foreground notification: ${e.message}")
                                 // Continue without foreground notification update
@@ -192,11 +206,14 @@ class ModelDownloadWorker(
                 throw Exception("Final model file is empty or missing: ${finalModelFile.absolutePath}")
             }
             
-            setProgress(workDataOf(KEY_PROGRESS to 100))
+            setProgress(workDataOf(
+                KEY_PROGRESS to 100,
+                KEY_MODEL_ID to modelId
+            ))
             // Update final foreground notification only if enabled
             if (useForeground) {
                 try {
-                    setForeground(createForegroundInfo(100))
+                    setForeground(createForegroundInfo(100, modelInfo.name))
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to update final foreground notification: ${e.message}")
                     // Continue without foreground notification update
@@ -229,8 +246,8 @@ class ModelDownloadWorker(
         }
     }
 
-    private fun createForegroundInfo(progress: Int): ForegroundInfo {
-        val title = "Downloading AI Model"
+    private fun createForegroundInfo(progress: Int, modelName: String): ForegroundInfo {
+        val title = "Downloading $modelName"
         val message = if (progress == 100) "Download completed!" else "Downloading... $progress%"
         
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)

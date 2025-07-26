@@ -15,6 +15,7 @@ import com.ml.shubham0204.docqa.domain.llm.AppLLMProvider
 import com.ml.shubham0204.docqa.domain.llm.LLMFactory
 import com.ml.shubham0204.docqa.domain.llm.LLMInitializationState
 import com.ml.shubham0204.docqa.domain.llm.LLMProvider
+import com.ml.shubham0204.docqa.domain.llm.ModelInfo
 import com.ml.shubham0204.docqa.domain.sms.CallLogsReader
 import com.ml.shubham0204.docqa.domain.sms.SmsReader
 import kotlinx.coroutines.CoroutineScope
@@ -590,6 +591,26 @@ class ChatViewModel(
             is LLMInitializationState.Initialized -> "Ready"
             is LLMInitializationState.Error -> "Error"
             else -> "Unknown"
+        }
+    }
+    
+    fun getDownloadedModels(): List<ModelInfo> {
+        return llmFactory.getDownloadedModels()
+    }
+    
+    fun switchModel(modelId: String) {
+        Log.d("ChatViewModel", "=== MODEL SWITCH REQUESTED FROM UI ===")
+        Log.d("ChatViewModel", "Target model: $modelId")
+        Log.d("ChatViewModel", "Current model: ${AppLLMProvider.getCurrentModelName()}")
+        
+        viewModelScope.launch {
+            try {
+                AppLLMProvider.switchModel(llmFactory, modelId)
+                Log.d("ChatViewModel", "=== MODEL SWITCH COMPLETED ===")
+                Log.d("ChatViewModel", "New model: ${AppLLMProvider.getCurrentModelName()}")
+            } catch (e: Exception) {
+                Log.e("ChatViewModel", "Failed to switch model: ${e.message}", e)
+            }
         }
     }
     

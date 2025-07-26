@@ -85,6 +85,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.ml.shubham0204.docqa.R
 import com.ml.shubham0204.docqa.data.ChatMessage
+import com.ml.shubham0204.docqa.domain.llm.AppLLMProvider
 import com.ml.shubham0204.docqa.domain.llm.LLMInitializationState
 import com.ml.shubham0204.docqa.ui.components.createAlertDialog
 import com.ml.shubham0204.docqa.ui.theme.DocQATheme
@@ -506,48 +507,90 @@ fun ChatScreen(
                             )
                         }
 
-                        // LLM Status Indicator
-                        TooltipBox(
-                            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
-                            tooltip = {
-                                Text(
-                                    text =
-                                    when (llmState) {
+                        // Model Selection Dropdown
+                        var showModelDropdown by remember { mutableStateOf(false) }
+                        val currentModelInfo = AppLLMProvider.getCurrentModelInfo()
+                        
+                        // Log current model for debugging
+                        LaunchedEffect(currentModelInfo) {
+                            Log.d("ChatScreen", "Current model: ${currentModelInfo?.name ?: "None"}")
+                        }
+                        
+                        Box {
+                            IconButton(onClick = { showModelDropdown = true }) {
+                                Icon(
+                                    imageVector = when (llmState) {
                                         is LLMInitializationState.Initialized ->
-                                            if (isLocalModelAvailable) "Using Local LLM (TinyLlama-1.1B)"
-                                            else "Using Remote LLM (Gemini)"
-                                        LLMInitializationState.Initializing -> "LLM is initializing..."
-                                        is LLMInitializationState.Error -> "LLM failed to initialize"
-                                        LLMInitializationState.NotInitialized -> "LLM not initialized"
-                                    }
+                                            if (isLocalModelAvailable) Icons.Default.Computer
+                                            else Icons.Default.Cloud
+                                        LLMInitializationState.Initializing ->
+                                            Icons.Default.Downloading
+                                        is LLMInitializationState.Error -> Icons.Default.Error
+                                        LLMInitializationState.NotInitialized -> Icons.Default.Key
+                                    },
+                                    contentDescription = "Model Selection",
+                                    tint = when (llmState) {
+                                        is LLMInitializationState.Initialized ->
+                                            if (isLocalModelAvailable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+                                        LLMInitializationState.Initializing -> MaterialTheme.colorScheme.tertiary
+                                        is LLMInitializationState.Error -> MaterialTheme.colorScheme.error
+                                        LLMInitializationState.NotInitialized -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    modifier = Modifier.size(20.dp)
                                 )
-                            },
-                            state = tooltipState) {
-                                IconButton(onClick = onModelDownloadClick) {
-                                    Icon(
-                                        imageVector =
-                                        when (llmState) {
-                                            is LLMInitializationState.Initialized ->
-                                                if (isLocalModelAvailable) Icons.Default.Computer
-                                                else Icons.Default.Cloud
-                                            LLMInitializationState.Initializing ->
-                                                Icons.Default.Downloading
-                                            is LLMInitializationState.Error -> Icons.Default.Error
-                                            LLMInitializationState.NotInitialized -> Icons.Default.Key
+                            }
+                            
+                            DropdownMenu(
+                                expanded = showModelDropdown,
+                                onDismissRequest = { showModelDropdown = false }
+                            ) {
+                                // Current model info
+                                currentModelInfo?.let { model ->
+                                    DropdownMenuItem(
+                                        text = { 
+                                            Text(
+                                                text = "Current: ${model.name}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Bold
+                                            )
                                         },
-                                        contentDescription = "LLM Status",
-                                        tint =
-                                        when (llmState) {
-                                            is LLMInitializationState.Initialized ->
-                                                if (isLocalModelAvailable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
-                                            LLMInitializationState.Initializing -> MaterialTheme.colorScheme.tertiary
-                                            is LLMInitializationState.Error -> MaterialTheme.colorScheme.error
-                                            LLMInitializationState.NotInitialized -> MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
-                                        modifier = Modifier.size(20.dp)
+                                        onClick = { showModelDropdown = false }
                                     )
                                 }
+                                
+                                // Available models
+                                val downloadedModels = chatViewModel.getDownloadedModels()
+                                downloadedModels.forEach { model ->
+                                    DropdownMenuItem(
+                                        text = { 
+                                            Text(
+                                                text = model.name,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        },
+                                        onClick = {
+                                            Log.d("ChatScreen", "User selected model: ${model.name} (${model.id})")
+                                            chatViewModel.switchModel(model.id)
+                                            showModelDropdown = false
+                                        }
+                                    )
+                                }
+                                
+                                // Download new model option
+                                DropdownMenuItem(
+                                    text = { 
+                                        Text(
+                                            text = "Download New Model...",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    },
+                                    onClick = {
+                                        showModelDropdown = false
+                                        onModelDownloadClick()
+                                    }
+                                )
                             }
+                        }
 
                         // Model Download Button (only show if local model is not available)
                         if (!isLocalModelAvailable) {
