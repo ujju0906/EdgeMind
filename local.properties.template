@@ -1,0 +1,32 @@
+## This file must *NOT* be checked into Version Control Systems,
+# as it contains information specific to your local configuration.
+#
+# Location of the SDK. This is only used by Gradle.
+# For customization when using a Version Control System, please read the
+# header note.
+#
+# DYNAMIC CONFIGURATION:
+# This template shows how to make local.properties dynamic
+# Copy this to local.properties and replace the values with your actual configuration
+
+# SDK Directory - Can be set via environment variable ANDROID_SDK_ROOT
+# If ANDROID_SDK_ROOT is not set, it will use the default path
+# Windows format: C:\\Users\\username\\AppData\\Local\\Android\\Sdk
+# Unix format: /Users/username/Library/Android/sdk
+sdk.dir=${ANDROID_SDK_ROOT:-C:\\Users\\girid\\AppData\\Local\\Android\\Sdk}
+
+# Keystore Configuration - Can be set via environment variables
+# For production builds, set these environment variables:
+# ANDROID_KEYSTORE_PATH, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+release.storeFile=${ANDROID_KEYSTORE_PATH:-DEFAULT_PATH_TO_YOUR_KEYSTORE}
+release.storePassword=${ANDROID_KEYSTORE_PASSWORD:-DEFAULT_STORE_PASSWORD}
+release.keyAlias=${ANDROID_KEY_ALIAS:-DEFAULT_KEY_ALIAS}
+release.keyPassword=${ANDROID_KEY_PASSWORD:-DEFAULT_KEY_PASSWORD}
+
+# Optional: Additional dynamic configurations
+# API Keys (if needed for development)
+# gemini.api.key=${GEMINI_API_KEY:-your_api_key_here}
+
+# Build configurations
+# build.debug=${BUILD_DEBUG:-true}
+# build.release=${BUILD_RELEASE:-false} 

@@ -1,6 +1,7 @@
 [versions]
 agp = "8.10.0"
 composeMarkdown = "0.5.0"
+ksp = "2.0.0-1.0.24"
 generativeai = "0.9.0"
 itextpdf = "5.5.13.3"
 koinBom = "3.5.6"
@@ -70,4 +71,5 @@ tasks-genai = { module = "com.google.mediapipe:tasks-genai", version.ref = "task
 android-application = { id = "com.android.application", version.ref = "agp" }
 jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 

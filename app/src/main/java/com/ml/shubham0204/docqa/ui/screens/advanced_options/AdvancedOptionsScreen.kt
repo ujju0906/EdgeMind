@@ -72,19 +72,17 @@ fun AdvancedOptionsScreen(
                 value = maxTokens,
                 onValueChange = { viewModel.saveMaxTokens(it) }
             )
-            HyperparameterSlider(
+            HyperparameterIntSlider(
                 label = "Recent Messages",
-                value = recentMessages.toFloat(),
-                onValueChange = { viewModel.saveRecentMessages(it.toInt()) },
-                valueRange = 1f..10f,
-                steps = 9
+                value = recentMessages,
+                onValueChange = { viewModel.saveRecentMessages(it) },
+                valueRange = 1..10
             )
-            HyperparameterSlider(
+            HyperparameterIntSlider(
                 label = "Recent Call Logs",
-                value = recentCallLogs.toFloat(),
-                onValueChange = { viewModel.saveRecentCallLogs(it.toInt()) },
-                valueRange = 1f..10f,
-                steps = 9
+                value = recentCallLogs,
+                onValueChange = { viewModel.saveRecentCallLogs(it) },
+                valueRange = 1..10
             )
         }
     }
@@ -122,6 +120,24 @@ fun HyperparameterInputField(
             onValueChange = { onValueChange(it.toIntOrNull() ?: 0) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+fun HyperparameterIntSlider(
+    label: String,
+    value: Int,
+    onValueChange: (Int) -> Unit,
+    valueRange: IntRange
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Text(text = "$label: $value")
+        Slider(
+            value = value.toFloat(),
+            onValueChange = { onValueChange(it.toInt()) },
+            valueRange = valueRange.first.toFloat()..valueRange.last.toFloat(),
+            steps = valueRange.last - valueRange.first - 1
         )
     }
 } 

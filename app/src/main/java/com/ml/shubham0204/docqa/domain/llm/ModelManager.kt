@@ -49,16 +49,7 @@ class ModelManager(private val context: Context) {
                 parameters = "1.3B",
                 quantization = "8-bit"
             ),
-            ModelInfo(
-                id = "deepseek-r1-distill",
-                name = "DeepSeek-R1-Distill-Qwen-1.5B",
-                description = "Distilled version for faster inference",
-                url = "https://huggingface.co/litert-community/DeepSeek-R1-Distill-Qwen-1.5B/resolve/main/DeepSeek-R1-Distill-Qwen-1.5B_multi-prefill-seq_q8_ekv1280.task?download=true",
-                filename = "DeepSeek-R1-Distill-Qwen-1.5B_multi-prefill-seq_q8_ekv1280.task",
-                sizeInGB = 1.5f,
-                parameters = "1.5B",
-                quantization = "8-bit"
-            ),
+
             ModelInfo(
                 id = "qwen2.5-3b",
                 name = "Qwen2.5-3B-Instruct",

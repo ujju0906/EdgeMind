@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.compose.compiler)
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.ksp)
     id("io.objectbox")
 }
 
@@ -67,6 +67,7 @@ android {
 
 ksp {
     arg("KOIN_CONFIG_CHECK", "true")
+    arg("KOIN_LOG_LEVEL", "INFO")
 }
 
 configurations {
