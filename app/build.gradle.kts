@@ -6,6 +6,10 @@ plugins {
     id("io.objectbox")
 }
 
+import com.example.build.loadProperties
+
+val localProperties = loadProperties(rootProject.file("local.properties"))
+
 android {
     namespace = "com.ml.shubham0204.docqa"
     compileSdk = 35
@@ -25,10 +29,10 @@ android {
     }
     signingConfigs {
         create("release") {
-            storeFile = file("C:\\Users\\girid\\Desktop\\passcode\\raghavcode.jks")
-            storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
-            keyAlias = System.getenv("RELEASE_KEYSTORE_ALIAS")
-            keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            storeFile = file(localProperties.getProperty("release.storeFile", "DEFAULT_PATH_TO_YOUR_KEYSTORE"))
+            storePassword = localProperties.getProperty("release.storePassword", "DEFAULT_STORE_PASSWORD")
+            keyAlias = localProperties.getProperty("release.keyAlias", "DEFAULT_KEY_ALIAS")
+            keyPassword = localProperties.getProperty("release.keyPassword", "DEFAULT_KEY_PASSWORD")
         }
     }
     buildTypes {

@@ -113,6 +113,7 @@ fun ChatScreen(
     onOpenDocsClick: (() -> Unit),
     onEditAPIKeyClick: (() -> Unit),
     onModelDownloadClick: (() -> Unit) = {},
+    onAdvancedOptionsClick: (() -> Unit)
 ) {
             DocQATheme {
             val chatViewModel: ChatViewModel = koinViewModel()
@@ -579,7 +580,7 @@ fun ChatScreen(
                 TopAppBar(
                     title = { 
                         Text(
-                            text = "DocQA Chat", 
+                            text = "EdgeMind", 
                             style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.SemiBold
                         ) 
@@ -813,6 +814,13 @@ fun ChatScreen(
                                         chatViewModel.debugContextStatus()
                                         showChatMenu = false
                                         Toast.makeText(context, "Context status logged to console", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Advanced Options") },
+                                    onClick = {
+                                        showChatMenu = false
+                                        onAdvancedOptionsClick()
                                     }
                                 )
                             }

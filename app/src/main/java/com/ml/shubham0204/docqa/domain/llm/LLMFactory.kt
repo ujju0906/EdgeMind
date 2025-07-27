@@ -2,11 +2,13 @@ package com.ml.shubham0204.docqa.domain.llm
 
 import android.content.Context
 import com.ml.shubham0204.docqa.data.GeminiAPIKey
+import com.ml.shubham0204.docqa.data.SettingsRepository
 
 class LLMFactory(
     private val context: Context,
     private val geminiAPIKey: GeminiAPIKey,
-    private val modelManager: ModelManager
+    private val modelManager: ModelManager,
+    private val settingsRepository: SettingsRepository
 ) {
     
     enum class LLMType {
@@ -20,7 +22,7 @@ class LLMFactory(
                 if (!modelManager.isModelDownloaded()) {
                     throw IllegalStateException("No models are available locally")
                 }
-                LocalLLMAPI(context, modelManager, modelId)
+                LocalLLMAPI(context, modelManager, modelId, settingsRepository)
             }
             LLMType.REMOTE -> {
                 val apiKey = geminiAPIKey.getAPIKey() 

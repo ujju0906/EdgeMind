@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.ml.shubham0204.docqa.ui.screens.advanced_options.AdvancedOptionsScreen
 import com.ml.shubham0204.docqa.ui.screens.chat.ChatScreen
 import com.ml.shubham0204.docqa.ui.screens.docs.DocsScreen
 import com.ml.shubham0204.docqa.ui.screens.edit_api_key.EditAPIKeyScreen
@@ -32,12 +33,14 @@ class MainActivity : ComponentActivity() {
                     ChatScreen(
                         onOpenDocsClick = { navHostController.navigate("docs") },
                         onEditAPIKeyClick = { navHostController.navigate("edit-api-key") },
-                        onModelDownloadClick = { navHostController.navigate("model_download") }
+                        onModelDownloadClick = { navHostController.navigate("model_download") },
+                        onAdvancedOptionsClick = { navHostController.navigate("advanced_options") }
                     )
                 }
                 composable("model_download") {
                     ModelDownloadScreen(onBackClick = { navHostController.navigateUp() })
                 }
+                composable("advanced_options") { AdvancedOptionsScreen(onBackClick = { navHostController.navigateUp() }) }
             }
         }
     }

@@ -9,6 +9,7 @@ import com.ml.shubham0204.docqa.data.ChatMessage
 import com.ml.shubham0204.docqa.data.DocumentsDB
 import com.ml.shubham0204.docqa.data.GeminiAPIKey
 import com.ml.shubham0204.docqa.data.RetrievedContext
+import com.ml.shubham0204.docqa.data.SettingsRepository
 import com.ml.shubham0204.docqa.domain.actions.ActionMatcher
 import com.ml.shubham0204.docqa.domain.embeddings.SentenceEmbeddingProvider
 import com.ml.shubham0204.docqa.domain.llm.AppLLMProvider
@@ -40,7 +41,8 @@ class ChatViewModel(
     private val llmFactory: LLMFactory,
     private val smsReader: SmsReader,
     private val callLogsReader: CallLogsReader,
-    private val actionMatcher: ActionMatcher
+    private val actionMatcher: ActionMatcher,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _questionState = MutableStateFlow("")
@@ -299,7 +301,7 @@ class ChatViewModel(
                         if (smsReader.hasPermission()) {
                             Log.d("ChatViewModel", "SMS permission granted, reading messages...")
                             // Reduced count from default 10 to 3 to reduce context length
-                            val smsMessages = smsReader.readLastSmsMessages(count = 3)
+                            val smsMessages = smsReader.readLastSmsMessages(count = settingsRepository.getRecentMessages())
                             Log.d("ChatViewModel", "SMS messages retrieved: ${smsMessages.size}")
                             
                             if (smsMessages.isNotEmpty()) {
@@ -333,7 +335,7 @@ class ChatViewModel(
                         if (callLogsReader.hasPermission()) {
                             Log.d("ChatViewModel", "Call log permission granted, reading entries...")
                             // Reduced count from default 10 to 3 to reduce context length
-                            val callLogs = callLogsReader.readLastCallLogs(count = 3)
+                            val callLogs = callLogsReader.readLastCallLogs(count = settingsRepository.getRecentCallLogs())
                             Log.d("ChatViewModel", "Call logs retrieved: ${callLogs.size}")
                             
                             if (callLogs.isNotEmpty()) {
@@ -657,7 +659,7 @@ class ChatViewModel(
                 val testRetrievedContextList = ArrayList<RetrievedContext>()
                 
                 if (_isSmsContextEnabled.value && smsReader.hasPermission()) {
-                    val smsMessages = smsReader.readLastSmsMessages(count = 1)
+                    val smsMessages = smsReader.readLastSmsMessages(count = settingsRepository.getRecentMessages())
                     Log.d("ChatViewModel", "Test SMS messages found: ${smsMessages.size}")
                     if (smsMessages.isNotEmpty()) {
                         testContext += "📱 TEST SMS: ${smsMessages.first().sender} - ${smsMessages.first().body}\n"
@@ -665,7 +667,7 @@ class ChatViewModel(
                 }
                 
                 if (_isCallLogContextEnabled.value && callLogsReader.hasPermission()) {
-                    val callLogs = callLogsReader.readLastCallLogs(count = 1)
+                    val callLogs = callLogsReader.readLastCallLogs(count = settingsRepository.getRecentCallLogs())
                     Log.d("ChatViewModel", "Test call logs found: ${callLogs.size}")
                     if (callLogs.isNotEmpty()) {
                         testContext += "📞 TEST CALL: ${callLogs.first().name ?: "Unknown"} - ${callLogs.first().type}\n"
