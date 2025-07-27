@@ -56,6 +56,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.widthIn
 import com.ml.shubham0204.docqa.domain.llm.ModelInfo
 import com.ml.shubham0204.docqa.ui.components.PermissionHelper
 import com.ml.shubham0204.docqa.ui.components.RequestNotificationPermission
@@ -81,6 +84,20 @@ fun ModelDownloadScreen(
     var showPermissionDialog by remember { mutableStateOf(false) }
     var shouldRequestNotificationPermission by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    
+    // Calculate responsive dimensions
+    val screenWidth = configuration.screenWidthDp.dp
+    val screenHeight = configuration.screenHeightDp.dp
+    val isTablet = screenWidth >= 600.dp
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    
+    // Responsive spacing and sizing
+    val horizontalPadding = if (isTablet) 32.dp else 16.dp
+    val verticalPadding = if (isTablet) 24.dp else 16.dp
+    val cardSpacing = if (isTablet) 16.dp else 12.dp
+    val maxCardWidth = if (isTablet) 400.dp else screenWidth - (horizontalPadding * 2)
     
     // Request notification permission for background downloads
     RequestNotificationPermission()
@@ -162,16 +179,28 @@ fun ModelDownloadScreen(
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background)
                     .padding(innerPadding)
-                    .padding(16.dp)
+                    .padding(horizontal = horizontalPadding, vertical = verticalPadding)
             ) {
                 // Summary Card
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (isTablet) {
+                                Modifier.widthIn(max = maxCardWidth)
+                            } else {
+                                Modifier
+                            }
+                        ),
+                    shape = RoundedCornerShape(if (isTablet) 20.dp else 16.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (isTablet) 4.dp else 2.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    )
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(if (isTablet) 24.dp else 16.dp)
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -233,14 +262,24 @@ fun ModelDownloadScreen(
                     downloadState is ModelDownloadViewModel.DownloadState.Paused) {
                     val downloadingModel = viewModel.getCurrentDownloadingModel()
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (isTablet) {
+                                    Modifier.widthIn(max = maxCardWidth)
+                                } else {
+                                    Modifier
+                                }
+                            ),
+                        shape = RoundedCornerShape(if (isTablet) 16.dp else 12.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = if (isTablet) 4.dp else 2.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     ) {
                         Column(
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(if (isTablet) 20.dp else 16.dp)
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -312,7 +351,8 @@ fun ModelDownloadScreen(
                 
                 // Models List
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(cardSpacing),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     items(availableModels) { model ->
                                                                          ModelCard(
@@ -488,13 +528,29 @@ fun ModelCard(
     onDelete: () -> Unit,
     onLoad: () -> Unit
 ) {
+    val configuration = LocalConfiguration.current
+    val isTablet = configuration.screenWidthDp.dp >= 600.dp
+    val maxCardWidth = if (isTablet) 400.dp else configuration.screenWidthDp.dp - 32.dp
+    
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (isTablet) {
+                    Modifier.widthIn(max = maxCardWidth)
+                } else {
+                    Modifier
+                }
+            ),
+        shape = RoundedCornerShape(if (isTablet) 16.dp else 12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isTablet) 4.dp else 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(if (isTablet) 20.dp else 16.dp)
         ) {
             // Header
             Row(
@@ -620,12 +676,12 @@ fun ModelCard(
                 }
             }
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(if (isTablet) 20.dp else 16.dp))
             
             // Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(if (isTablet) 12.dp else 8.dp)
             ) {
                 when {
                     isPaused -> {
@@ -644,17 +700,26 @@ fun ModelCard(
                             onClick = { /* Cancel download handled in parent */ },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
-                            )
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            ),
+                            shape = RoundedCornerShape(if (isTablet) 12.dp else 8.dp)
                         ) {
-                            Text("Cancel")
+                            Text(
+                                "Cancel",
+                                fontSize = if (isTablet) 14.sp else 12.sp
+                            )
                         }
                     }
                     model.isDownloaded -> {
                         // Show load and delete buttons
                         OutlinedButton(
                             onClick = onLoad,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.primary
+                            ),
+                            shape = RoundedCornerShape(if (isTablet) 12.dp else 8.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.PlayArrow,
@@ -670,7 +735,8 @@ fun ModelCard(
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.outlinedButtonColors(
                                 contentColor = MaterialTheme.colorScheme.error
-                            )
+                            ),
+                            shape = RoundedCornerShape(if (isTablet) 12.dp else 8.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Delete,
@@ -685,7 +751,12 @@ fun ModelCard(
                         // Show download button
                         Button(
                             onClick = onDownload,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            shape = RoundedCornerShape(if (isTablet) 12.dp else 8.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Download,

@@ -626,6 +626,8 @@ class ChatViewModel(
         Log.d("ChatViewModel", "SMS Permission: ${smsReader.hasPermission()}")
         Log.d("ChatViewModel", "Call Log Context Enabled: ${_isCallLogContextEnabled.value}")
         Log.d("ChatViewModel", "Call Log Permission: ${callLogsReader.hasPermission()}")
+        Log.d("ChatViewModel", "Call Log Accessible: ${callLogsReader.isCallLogAccessible()}")
+        Log.d("ChatViewModel", "Call Log Diagnostic: ${callLogsReader.getDiagnosticInfo()}")
         Log.d("ChatViewModel", "Document Context Enabled: ${_isDocumentContextEnabled.value}")
         Log.d("ChatViewModel", "Document Count: ${documentsDB.getDocsCount()}")
         Log.d("ChatViewModel", "Chunk Count: ${chunksDB.getChunksCount()}")

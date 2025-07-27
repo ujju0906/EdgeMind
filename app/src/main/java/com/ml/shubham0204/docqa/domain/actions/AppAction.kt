@@ -237,11 +237,20 @@ fun getPredefinedActions(context: Context): List<AppAction> {
                 id = "open_camera",
             descriptions = listOf("Open camera", "Take a picture", "Launch camera", "Start camera", "Camera", "Take photo", "Take selfie"),
                 action = { ctx, _ ->
-                val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                    try {
+                        // Check camera permission
+                        if (ctx.checkSelfPermission(android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                            return@AppAction "PERMISSION_REQUEST:CAMERA"
+                        }
+                        
+                        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
                             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         }
-                    ctx.startActivity(intent)
-                "Opening camera"
+                        ctx.startActivity(intent)
+                        "📸 Opening camera"
+                    } catch (e: Exception) {
+                        "📸 Failed to open camera: ${e.message}"
+                    }
             },
             showInChat = true
         )
