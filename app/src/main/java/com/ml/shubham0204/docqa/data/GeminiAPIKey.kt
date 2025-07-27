@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import org.koin.core.annotation.Single
+import androidx.core.content.edit
 
 @Single
 class GeminiAPIKey(
@@ -33,7 +34,7 @@ class GeminiAPIKey(
         )
 
     fun saveAPIKey(apiKey: String) {
-        sharedPreferences.edit().putString(apiKeySharedPrefKey, apiKey).apply()
+        sharedPreferences.edit { putString(apiKeySharedPrefKey, apiKey) }
     }
 
     fun getAPIKey(): String? = sharedPreferences.getString(apiKeySharedPrefKey, null)

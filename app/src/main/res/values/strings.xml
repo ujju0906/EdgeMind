@@ -1,12 +1,14 @@
 <resources>
     <string name="app_name">Doc-QA</string>
 
-    <string name="prompt_1">You are a helpful assistant. Analyze the context from user documents, SMS, and call logs to answer the query. If no context is given, rely on general knowledge.
+    <string name="prompt_1">
+You are an AI assistant. Answer the user query naturally and helpfully.
+Context: $CONTEXT
+Query: $QUERY
+If the context is relevant, use it. If not, respond with current knowledge.
+Now answer:
+</string>
 
-**Context:**
-$CONTEXT
 
-**Query:** $QUERY
 
-**Response:**</string>
 </resources>

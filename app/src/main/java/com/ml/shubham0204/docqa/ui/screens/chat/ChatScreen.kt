@@ -1,14 +1,22 @@
 package com.ml.shubham0204.docqa.ui.screens.chat
 
+import android.Manifest
+import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,7 +31,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Computer
@@ -32,6 +39,8 @@ import androidx.compose.material.icons.filled.Downloading
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Message
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Phone
@@ -39,26 +48,25 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.Switch
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -68,7 +76,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -77,28 +84,25 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.text.style.TextAlign
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.ml.shubham0204.docqa.R
-import com.ml.shubham0204.docqa.data.ChatMessage
+import com.ml.shubham0204.docqa.data.*
+import com.ml.shubham0204.docqa.domain.llm.AppLLMProvider
 import com.ml.shubham0204.docqa.domain.llm.LLMInitializationState
-import com.ml.shubham0204.docqa.ui.components.createAlertDialog
-import com.ml.shubham0204.docqa.ui.theme.DocQATheme
+import com.ml.shubham0204.docqa.ui.theme.*
+import com.ml.shubham0204.docqa.ui.screens.chat.ChatViewModel
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import dev.jeziellago.compose.markdowntext.MarkdownText
 import org.koin.androidx.compose.koinViewModel
-import androidx.compose.material3.rememberTooltipState
-import androidx.compose.material3.CircularProgressIndicator
-import android.Manifest
-import android.app.Activity
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import android.provider.Settings
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.material3.Divider
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.ui.text.style.TextOverflow
+
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -110,29 +114,36 @@ fun ChatScreen(
     onEditAPIKeyClick: (() -> Unit),
     onModelDownloadClick: (() -> Unit) = {},
 ) {
-    DocQATheme {
-        val chatViewModel: ChatViewModel = koinViewModel()
-        val llmState by chatViewModel.llmInitializationState.collectAsState()
-        val context = LocalContext.current
-        val isSmsContextEnabled by chatViewModel.isSmsContextEnabled.collectAsState()
-        var showSmsSettingsDialog by remember { mutableStateOf(false) }
+            DocQATheme {
+            val chatViewModel: ChatViewModel = koinViewModel()
+            val llmState by chatViewModel.llmInitializationState.collectAsState()
+            val context = LocalContext.current
+            val isSmsContextEnabled by chatViewModel.isSmsContextEnabled.collectAsState()
+            var showSmsSettingsDialog by remember { mutableStateOf(false) }
+            var showSmsPermissionDialog by remember { mutableStateOf(false) }
 
-        val isCallLogContextEnabled by chatViewModel.isCallLogContextEnabled.collectAsState()
-        var showCallLogSettingsDialog by remember { mutableStateOf(false) }
+            val isCallLogContextEnabled by chatViewModel.isCallLogContextEnabled.collectAsState()
+            var showCallLogSettingsDialog by remember { mutableStateOf(false) }
+            var showCallLogPermissionDialog by remember { mutableStateOf(false) }
 
-        val isDocumentContextEnabled by chatViewModel.isDocumentContextEnabled.collectAsState()
+            val isDocumentContextEnabled by chatViewModel.isDocumentContextEnabled.collectAsState()
+            
+            // Camera permission states
+            var showCameraSettingsDialog by remember { mutableStateOf(false) }
+            var showCameraPermissionDialog by remember { mutableStateOf(false) }
+            var cameraPermissionRequested by remember { mutableStateOf(false) }
 
         // Chat history state
         val chatHistory by chatViewModel.chatHistoryState.collectAsState()
         val question by chatViewModel.questionState.collectAsState()
         val response by chatViewModel.responseState.collectAsState()
         val isGeneratingResponse by chatViewModel.isGeneratingResponseState.collectAsState()
-        val retrievedContextList by chatViewModel.retrievedContextListState.collectAsState()
+       // val retrievedContextList by chatViewModel.retrievedContextListState.collectAsState()
         
         // Debug chat history state
         LaunchedEffect(chatHistory) {
             Log.d("ChatScreen", "Chat history updated: ${chatHistory.size} messages")
-            chatHistory.forEach { message ->
+            chatHistory.forEach { message: ChatMessage ->
                 Log.d("ChatScreen", "Message: ${message.messageId} - ${if (message.isUserMessage) "USER" else "ASSISTANT"} - ${message.question}")
             }
         }
@@ -143,11 +154,23 @@ fun ChatScreen(
         var showSearchDialog by remember { mutableStateOf(false) }
         var searchQuery by remember { mutableStateOf("") }
         var showClearHistoryDialog by remember { mutableStateOf(false) }
+        var showMediaSettingsDialog by remember { mutableStateOf(false) }
         
         val listState = rememberLazyListState()
         val keyboardController = LocalSoftwareKeyboardController.current
         val isLlmReady = llmState is LLMInitializationState.Initialized
         val actionsEnabled by chatViewModel.actionsEnabled.collectAsState()
+        
+        // Responsive design
+        val configuration = LocalConfiguration.current
+        val isTablet = configuration.screenWidthDp.dp >= 600.dp
+        val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        
+        // Responsive spacing and sizing
+        val horizontalPadding = if (isTablet) 24.dp else 16.dp
+        val verticalPadding = if (isTablet) 20.dp else 16.dp
+        val cardSpacing = if (isTablet) 16.dp else 12.dp
+        val maxContentWidth = if (isTablet) 600.dp else configuration.screenWidthDp.dp - (horizontalPadding * 2)
 
         // Auto-scroll to bottom when new messages arrive or response is streaming
         LaunchedEffect(chatHistory.size, response) {
@@ -158,7 +181,105 @@ fun ChatScreen(
             }
         }
 
-        // Permission dialogs
+        // Permission launchers
+        val smsPermissionLauncher =
+            rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { isGranted: Boolean ->
+                if (isGranted) {
+                    chatViewModel.toggleSmsContext()
+                    Toast.makeText(context, "SMS permission granted! Context enabled.", Toast.LENGTH_SHORT).show()
+                } else {
+                    val activity = context as? Activity
+                    if (activity != null && !activity.shouldShowRequestPermissionRationale(Manifest.permission.READ_SMS)) {
+                        showSmsSettingsDialog = true
+                    } else {
+                        Toast.makeText(context, "SMS permission denied. Context disabled.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+        val callLogPermissionLauncher =
+            rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { isGranted: Boolean ->
+                if (isGranted) {
+                    chatViewModel.toggleCallLogContext()
+                    Toast.makeText(context, "Call Log permission granted! Context enabled.", Toast.LENGTH_SHORT).show()
+                } else {
+                    val activity = context as? Activity
+                    if (activity != null && !activity.shouldShowRequestPermissionRationale(Manifest.permission.READ_CALL_LOG)) {
+                        showCallLogSettingsDialog = true
+                    } else {
+                        Toast.makeText(context, "Call Log permission denied. Context disabled.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+        val cameraPermissionLauncher =
+            rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { isGranted: Boolean ->
+                if (isGranted) {
+                    // Camera permission granted, can now use flashlight
+                    Toast.makeText(context, "🪄 Camera permission granted! You can now cast Lumos and Nox spells!", Toast.LENGTH_LONG).show()
+                    cameraPermissionRequested = true
+                } else {
+                    val activity = context as? Activity
+                    if (activity != null && !activity.shouldShowRequestPermissionRationale(Manifest.permission.CAMERA)) {
+                        showCameraSettingsDialog = true
+                    } else {
+                        Toast.makeText(context, "Camera permission denied. Flashlight spells won't work.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+        val mediaPermissionLauncher =
+            rememberLauncherForActivityResult(
+                ActivityResultContracts.RequestPermission()
+            ) { isGranted: Boolean ->
+                if (isGranted) {
+                    // Media permission granted
+                    Toast.makeText(context, "🖼️ Media permission granted! You can now access photos and files.", Toast.LENGTH_LONG).show()
+                } else {
+                    val activity = context as? Activity
+                    if (activity != null && !activity.shouldShowRequestPermissionRationale(Manifest.permission.READ_MEDIA_IMAGES)) {
+                        showMediaSettingsDialog = true
+                    } else {
+                        Toast.makeText(context, "Media permission denied. Gallery access won't work.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+        // SMS Permission Dialog
+        if (showSmsPermissionDialog) {
+            AlertDialog(
+                onDismissRequest = { showSmsPermissionDialog = false },
+                title = { Text("SMS Permission Required") },
+                text = {
+                    Text(
+                        "This app needs SMS permission to provide context from your messages. This helps improve the quality of responses by understanding your communication patterns."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showSmsPermissionDialog = false
+                            smsPermissionLauncher.launch(Manifest.permission.READ_SMS)
+                        }
+                    ) {
+                        Text("Grant Permission")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSmsPermissionDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        // SMS Settings Dialog
         if (showSmsSettingsDialog) {
             AlertDialog(
                 onDismissRequest = { showSmsSettingsDialog = false },
@@ -189,6 +310,35 @@ fun ChatScreen(
             )
         }
 
+        // Call Log Permission Dialog
+        if (showCallLogPermissionDialog) {
+            AlertDialog(
+                onDismissRequest = { showCallLogPermissionDialog = false },
+                title = { Text("Call Log Permission Required") },
+                text = {
+                    Text(
+                        "This app needs Call Log permission to provide context from your call history. This helps improve the quality of responses by understanding your communication patterns."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showCallLogPermissionDialog = false
+                            callLogPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
+                        }
+                    ) {
+                        Text("Grant Permission")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCallLogPermissionDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        // Call Log Settings Dialog
         if (showCallLogSettingsDialog) {
             AlertDialog(
                 onDismissRequest = { showCallLogSettingsDialog = false },
@@ -213,6 +363,95 @@ fun ChatScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { showCallLogSettingsDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        // Camera Permission Dialog
+        if (showCameraPermissionDialog) {
+            AlertDialog(
+                onDismissRequest = { showCameraPermissionDialog = false },
+                title = { Text("Camera Permission Required") },
+                text = {
+                    Text(
+                        "This app needs Camera permission to control the flashlight for Lumos and Nox spells. The camera is used to access the flashlight hardware."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showCameraPermissionDialog = false
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
+                    ) {
+                        Text("Grant Permission")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCameraPermissionDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        // Camera Settings Dialog
+        if (showCameraSettingsDialog) {
+            AlertDialog(
+                onDismissRequest = { showCameraSettingsDialog = false },
+                title = { Text("Camera Permission Required") },
+                text = {
+                    Text(
+                        "You have permanently denied the Camera permission. To use the flashlight (Lumos spell), you must enable it from the app settings."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showCameraSettingsDialog = false
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", context.packageName, null)
+                            }
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Text("Open Settings")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCameraSettingsDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        if (showMediaSettingsDialog) {
+            AlertDialog(
+                onDismissRequest = { showMediaSettingsDialog = false },
+                title = { Text("Media Permission Required") },
+                text = {
+                    Text(
+                        "You have permanently denied the Media permission. To access photos and files, you must enable it from the app settings."
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showMediaSettingsDialog = false
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = Uri.fromParts("package", context.packageName, null)
+                            }
+                            context.startActivity(intent)
+                        }
+                    ) {
+                        Text("Open Settings")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showMediaSettingsDialog = false }) {
                         Text("Cancel")
                     }
                 }
@@ -285,37 +524,54 @@ fun ChatScreen(
             )
         }
 
-        val smsPermissionLauncher =
-            rememberLauncherForActivityResult(
-                ActivityResultContracts.RequestPermission()
-            ) { isGranted: Boolean ->
-                if (isGranted) {
-                    chatViewModel.toggleSmsContext()
+        // Set up permission request callbacks
+        LaunchedEffect(Unit) {
+            chatViewModel.setCameraPermissionRequestCallback {
+                if (ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.CAMERA
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    // Permission already granted, proceed with action
+                    Toast.makeText(context, "Camera permission already granted!", Toast.LENGTH_SHORT).show()
                 } else {
-                    val activity = context as? Activity
-                    if (activity != null && !activity.shouldShowRequestPermissionRationale(Manifest.permission.READ_SMS)) {
-                        showSmsSettingsDialog = true
-                    } else {
-                        Toast.makeText(context, "Permission denied.", Toast.LENGTH_SHORT).show()
-                    }
+                    showCameraPermissionDialog = true
                 }
             }
-
-        val callLogPermissionLauncher =
-            rememberLauncherForActivityResult(
-                ActivityResultContracts.RequestPermission()
-            ) { isGranted: Boolean ->
-                if (isGranted) {
-                    chatViewModel.toggleCallLogContext()
+            chatViewModel.setSmsPermissionRequestCallback {
+                if (ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.READ_SMS
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    // Permission already granted, proceed with action
+                    Toast.makeText(context, "SMS permission already granted!", Toast.LENGTH_SHORT).show()
                 } else {
-                    val activity = context as? Activity
-                    if (activity != null && !activity.shouldShowRequestPermissionRationale(Manifest.permission.READ_CALL_LOG)) {
-                        showCallLogSettingsDialog = true
-                    } else {
-                        Toast.makeText(context, "Permission denied.", Toast.LENGTH_SHORT).show()
-                    }
+                    showSmsPermissionDialog = true
                 }
             }
+            chatViewModel.setCallLogPermissionRequestCallback {
+                if (ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.READ_CALL_LOG
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    // Permission already granted, proceed with action
+                    Toast.makeText(context, "Call Log permission already granted!", Toast.LENGTH_SHORT).show()
+                } else {
+                    showCallLogPermissionDialog = true
+                }
+            }
+            chatViewModel.setMediaPermissionRequestCallback {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    // Android 13+ uses READ_MEDIA_IMAGES
+                    mediaPermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
+                } else {
+                    // Android 12 and below use READ_EXTERNAL_STORAGE
+                    mediaPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                }
+            }
+        }
 
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -324,13 +580,15 @@ fun ChatScreen(
                     title = { 
                         Text(
                             text = "DocQA Chat", 
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.SemiBold
                         ) 
                     },
-                    colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
+                    colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                        actionIconContentColor = MaterialTheme.colorScheme.onSurface
                     ),
                     actions = {
                         val isLocalModelAvailable by
@@ -349,7 +607,7 @@ fun ChatScreen(
                                 ) {
                                     chatViewModel.toggleSmsContext()
                                 } else {
-                                    smsPermissionLauncher.launch(Manifest.permission.READ_SMS)
+                                    showSmsPermissionDialog = true
                                 }
                             }
                         ) {
@@ -371,7 +629,7 @@ fun ChatScreen(
                                 ) {
                                     chatViewModel.toggleCallLogContext()
                                 } else {
-                                    callLogPermissionLauncher.launch(Manifest.permission.READ_CALL_LOG)
+                                    showCallLogPermissionDialog = true
                                 }
                             }
                         ) {
@@ -397,48 +655,90 @@ fun ChatScreen(
                             )
                         }
 
-                        // LLM Status Indicator
-                        TooltipBox(
-                            positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
-                            tooltip = {
-                                Text(
-                                    text =
-                                    when (llmState) {
+                        // Model Selection Dropdown
+                        var showModelDropdown by remember { mutableStateOf(false) }
+                        val currentModelInfo = AppLLMProvider.getCurrentModelInfo()
+                        
+                        // Log current model for debugging
+                        LaunchedEffect(currentModelInfo) {
+                            Log.d("ChatScreen", "Current model: ${currentModelInfo?.name ?: "None"}")
+                        }
+                        
+                        Box {
+                            IconButton(onClick = { showModelDropdown = true }) {
+                                Icon(
+                                    imageVector = when (llmState) {
                                         is LLMInitializationState.Initialized ->
-                                            if (isLocalModelAvailable) "Using Local LLM (Qwen2.5-1.5B)"
-                                            else "Using Remote LLM (Gemini)"
-                                        LLMInitializationState.Initializing -> "LLM is initializing..."
-                                        is LLMInitializationState.Error -> "LLM failed to initialize"
-                                        LLMInitializationState.NotInitialized -> "LLM not initialized"
-                                    }
+                                            if (isLocalModelAvailable) Icons.Default.Computer
+                                            else Icons.Default.Cloud
+                                        LLMInitializationState.Initializing ->
+                                            Icons.Default.Downloading
+                                        is LLMInitializationState.Error -> Icons.Default.Error
+                                        LLMInitializationState.NotInitialized -> Icons.Default.Key
+                                    },
+                                    contentDescription = "Model Selection",
+                                    tint = when (llmState) {
+                                        is LLMInitializationState.Initialized ->
+                                            if (isLocalModelAvailable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+                                        LLMInitializationState.Initializing -> MaterialTheme.colorScheme.tertiary
+                                        is LLMInitializationState.Error -> MaterialTheme.colorScheme.error
+                                        LLMInitializationState.NotInitialized -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    modifier = Modifier.size(20.dp)
                                 )
-                            },
-                            state = tooltipState) {
-                                IconButton(onClick = onModelDownloadClick) {
-                                    Icon(
-                                        imageVector =
-                                        when (llmState) {
-                                            is LLMInitializationState.Initialized ->
-                                                if (isLocalModelAvailable) Icons.Default.Computer
-                                                else Icons.Default.Cloud
-                                            LLMInitializationState.Initializing ->
-                                                Icons.Default.Downloading
-                                            is LLMInitializationState.Error -> Icons.Default.Error
-                                            LLMInitializationState.NotInitialized -> Icons.Default.Key
+                            }
+                            
+                            DropdownMenu(
+                                expanded = showModelDropdown,
+                                onDismissRequest = { showModelDropdown = false }
+                            ) {
+                                // Current model info
+                                currentModelInfo?.let { model ->
+                                    DropdownMenuItem(
+                                        text = { 
+                                            Text(
+                                                text = "Current: ${model.name}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Bold
+                                            )
                                         },
-                                        contentDescription = "LLM Status",
-                                        tint =
-                                        when (llmState) {
-                                            is LLMInitializationState.Initialized ->
-                                                if (isLocalModelAvailable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
-                                            LLMInitializationState.Initializing -> MaterialTheme.colorScheme.tertiary
-                                            is LLMInitializationState.Error -> MaterialTheme.colorScheme.error
-                                            LLMInitializationState.NotInitialized -> MaterialTheme.colorScheme.onSurfaceVariant
-                                        },
-                                        modifier = Modifier.size(20.dp)
+                                        onClick = { showModelDropdown = false }
                                     )
                                 }
+                                
+                                // Available models
+                                val downloadedModels = chatViewModel.getDownloadedModels()
+                                downloadedModels.forEach { model ->
+                                    DropdownMenuItem(
+                                        text = { 
+                                            Text(
+                                                text = model.name,
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
+                                        },
+                                        onClick = {
+                                            Log.d("ChatScreen", "User selected model: ${model.name} (${model.id})")
+                                            chatViewModel.switchModel(model.id)
+                                            showModelDropdown = false
+                                        }
+                                    )
+                                }
+                                
+                                // Download new model option
+                                DropdownMenuItem(
+                                    text = { 
+                                        Text(
+                                            text = "Download New Model...",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    },
+                                    onClick = {
+                                        showModelDropdown = false
+                                        onModelDownloadClick()
+                                    }
+                                )
                             }
+                        }
 
                         // Model Download Button (only show if local model is not available)
                         if (!isLocalModelAvailable) {
@@ -462,17 +762,21 @@ fun ChatScreen(
                         }
 
                         // Actions toggle switch
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "Actions",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Switch(
-                                checked = actionsEnabled,
-                                onCheckedChange = { chatViewModel.toggleActionsEnabled() },
-                                modifier = Modifier.padding(start = 4.dp, end = 8.dp)
-                            )
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Actions",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Switch(
+                                    checked = actionsEnabled,
+                                    onCheckedChange = { chatViewModel.toggleActionsEnabled() },
+                                    modifier = Modifier.padding(start = 4.dp, end = 8.dp)
+                                )
+                            }
+                            
+
                         }
 
                         // Chat menu
@@ -503,6 +807,14 @@ fun ChatScreen(
                                         showChatMenu = false
                                     }
                                 )
+                                DropdownMenuItem(
+                                    text = { Text("Debug Context Status") },
+                                    onClick = {
+                                        chatViewModel.debugContextStatus()
+                                        showChatMenu = false
+                                        Toast.makeText(context, "Context status logged to console", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
                             }
                         }
                     })
@@ -515,10 +827,22 @@ fun ChatScreen(
                 ) {
                     // Chat messages area
                     LazyColumn(
-                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .then(
+                                if (isTablet) {
+                                    Modifier.widthIn(max = maxContentWidth)
+                                } else {
+                                    Modifier
+                                }
+                            ),
                         state = listState,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                        verticalArrangement = Arrangement.spacedBy(cardSpacing),
+                        contentPadding = PaddingValues(
+                            horizontal = horizontalPadding, 
+                            vertical = verticalPadding
+                        )
                     ) {
                         Log.d("ChatScreen", "Chat history size: ${chatHistory.size}, isGeneratingResponse: $isGeneratingResponse")
                         // Always show chat history section for debugging
@@ -557,7 +881,7 @@ fun ChatScreen(
                                         text = "Ask questions about your documents or get help with tasks",
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        textAlign = TextAlign.Center
                                 )
                                 }
                             }
@@ -607,7 +931,7 @@ fun ChatScreen(
                                 }
                             }
                             
-                            items(filteredHistory) { message ->
+                            items(filteredHistory) { message: ChatMessage ->
                                 ChatMessageItem(
                                     message = message,
                                     onDelete = { chatViewModel.deleteMessage(message.messageId) },
@@ -672,7 +996,7 @@ fun ChatScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(4.dp),
+                                .padding(if (isTablet) 8.dp else 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                         OutlinedTextField(
@@ -685,18 +1009,20 @@ fun ChatScreen(
                                         text = when (llmState) {
                                             is LLMInitializationState.Initialized -> "Ask a question..."
                                         LLMInitializationState.Initializing -> "LLM is initializing..."
-                                        is LLMInitializationState.Error -> "LLM failed to initialize"
-                                        LLMInitializationState.NotInitialized -> "LLM not initialized"
-                                        }
+                                        is LLMInitializationState.Error -> "Type a message or try actions like 'open camera'"
+                                        LLMInitializationState.NotInitialized -> "Type a message or try actions like 'open camera'"
+                                        },
+                                        style = if (isTablet) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium
                                     )
                                 },
-                                maxLines = 3,
-                                colors = androidx.compose.material3.TextFieldDefaults.outlinedTextFieldColors(
+                                maxLines = if (isTablet) 4 else 3,
+                                colors = TextFieldDefaults.outlinedTextFieldColors(
                                     containerColor = Color.Transparent,
                                     unfocusedBorderColor = Color.Transparent,
                                     focusedBorderColor = Color.Transparent
                                 ),
-                                shape = RoundedCornerShape(20.dp)
+                                shape = RoundedCornerShape(if (isTablet) 24.dp else 20.dp),
+                                textStyle = if (isTablet) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium
                             )
 
                             Spacer(modifier = Modifier.width(8.dp))
@@ -725,33 +1051,17 @@ fun ChatScreen(
                                     modifier = Modifier
                                         .size(48.dp)
                                         .background(
-                                            if (isLlmReady) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            MaterialTheme.colorScheme.primary,
                                             CircleShape
                                         ),
-                                    enabled = isLlmReady,
+                                    enabled = true, // Always enabled - ChatViewModel handles LLM availability
                             onClick = {
                                 keyboardController?.hide()
-                                if (isDocumentContextEnabled && !chatViewModel.checkNumDocuments()) {
-                                            Toast.makeText(
-                                                context,
-                                                "Add documents to execute queries when document context is enabled",
-                                                Toast.LENGTH_LONG
-                                            ).show()
-                                    return@IconButton
-                                }
+                                // Document context check removed - ChatViewModel handles this gracefully
 
-                                // Check if any LLM is available (local or remote)
-                                if (!chatViewModel.isLocalModelAvailable() && !chatViewModel.isRemoteModelAvailable()) {
-                                    createAlertDialog(
-                                        dialogTitle = "No LLM Available",
-                                        dialogText = "Please download a local model or configure a Gemini API key to use the app.",
-                                        dialogPositiveButtonText = "Download Local Model",
-                                        onPositiveButtonClick = onModelDownloadClick,
-                                        dialogNegativeButtonText = "Add API Key",
-                                        onNegativeButtonClick = onEditAPIKeyClick,
-                                    )
-                                    return@IconButton
-                                }
+                                // Check if any LLM is available (local or remote) only for non-action queries
+                                // Actions can work without LLM, so we'll let the ChatViewModel handle this
+                                // The ChatViewModel will check for actions first, and only require LLM for non-action queries
 
                                 if (questionText.trim().isEmpty()) {
                                     Toast.makeText(context, "Enter a query to execute", Toast.LENGTH_LONG).show()
@@ -883,7 +1193,7 @@ fun ChatMessageItem(
                         linkColor = MaterialTheme.colorScheme.primary,
                         onLinkClicked = { url ->
                             try {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                                 context.startActivity(intent)
                             } catch (e: Exception) {
                                 Log.e("ChatScreen", "Error opening link: $url", e)
@@ -1039,7 +1349,7 @@ fun StreamingResponseItem(
                     linkColor = MaterialTheme.colorScheme.primary,
                     onLinkClicked = { url ->
                         try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                            val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                             localContext.startActivity(intent)
                         } catch (e: Exception) {
                             Log.e("ChatScreen", "Error opening link: $url", e)
