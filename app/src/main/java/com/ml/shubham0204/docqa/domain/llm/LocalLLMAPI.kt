@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Log
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInference.LlmInferenceOptions
-import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
 import com.ml.shubham0204.docqa.data.SettingsRepository
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -19,7 +18,6 @@ class LocalLLMAPI(
     private val settingsRepository: SettingsRepository
 ) : LLMProvider {
     private var llmInference: LlmInference? = null
-    private var session: LlmInferenceSession? = null
     private var isGenerating = false
     private var isCancelled = false
 
@@ -28,7 +26,7 @@ class LocalLLMAPI(
         Log.d("LocalLLMAPI", "Current model ID: $currentModelId")
         Log.d("LocalLLMAPI", "LLM Inference exists: ${llmInference != null}")
         
-        if (llmInference != null && session != null && currentModelId != null) {
+        if (llmInference != null && currentModelId != null) {
             Log.d("LocalLLMAPI", "Already initialized with model: $currentModelId")
             return
         }
@@ -70,17 +68,6 @@ class LocalLLMAPI(
                 // Create an instance of the LLM Inference task
                 Log.d("LocalLLMAPI", "Creating LlmInference instance...")
                 llmInference = LlmInference.createFromOptions(context, taskOptions)
-
-                // Create a session for inference with sampling parameters
-                session = LlmInferenceSession.createFromOptions(
-                    llmInference!!,
-                    LlmInferenceSession.LlmInferenceSessionOptions.builder()
-                        .setTopK(settingsRepository.getTopK())
-                        .setTopP(settingsRepository.getTopP())
-                        .setTemperature(settingsRepository.getTemperature())
-                        .build()
-                )
-
                 val endTime = System.currentTimeMillis()
                 Log.d("LocalLLMAPI", "=== MODEL LOADING COMPLETED ===")
                 Log.d("LocalLLMAPI", "Loading time: ${endTime - startTime}ms")
@@ -89,7 +76,9 @@ class LocalLLMAPI(
             } catch (e: Exception) {
                 Log.e("LocalLLMAPI", "Failed to initialize LLM: ${e.message}", e)
                 // Clean up on failure
-                close()
+                llmInference?.close()
+                llmInference = null
+                currentModelId = null
                 throw e
             }
         }
@@ -136,7 +125,7 @@ class LocalLLMAPI(
                 Log.d("LocalLLMAPI", "Current model: $currentModelId")
                 Log.d("LocalLLMAPI", "LLM Inference exists: ${llmInference != null}")
                 
-                if (llmInference == null || session == null) {
+                if (llmInference == null) {
                     Log.e("LocalLLMAPI", "LLM not initialized!")
                     throw IllegalStateException("LLM not initialized. Call init() first.")
                 }
@@ -150,8 +139,9 @@ class LocalLLMAPI(
 
                 // Generate response using the local model with proper error handling
                 try {
-                    session!!.addQueryChunk(prompt)
-                    session!!.generateResponseAsync { partialResult: String?, done: Boolean ->
+                    llmInference!!.generateResponseAsync(
+                        prompt,
+                    ) { partialResult: String?, done: Boolean ->
                         try {
                             if (isCancelled) {
                                 // Generation was cancelled
@@ -206,7 +196,6 @@ class LocalLLMAPI(
             isGenerating = false
             isCancelled = true
             
-            session?.close()
             // Close LLM inference with proper error handling
             llmInference?.let { inference ->
                 try {
@@ -217,7 +206,6 @@ class LocalLLMAPI(
                 }
             }
             llmInference = null
-            session = null
             currentModelId = null
             Log.d("LocalLLMAPI", "LLM closed successfully")
         } catch (e: Exception) {
@@ -227,7 +215,7 @@ class LocalLLMAPI(
     
     // Add method to check if LLM is in a valid state
     fun isInitialized(): Boolean {
-        return llmInference != null && session != null && currentModelId != null
+        return llmInference != null && currentModelId != null
     }
     
     // Add method to get memory usage info

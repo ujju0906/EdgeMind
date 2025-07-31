@@ -20,12 +20,10 @@ fun AdvancedOptionsScreen(
     viewModel: AdvancedOptionsViewModel = koinViewModel(),
     onBackClick: () -> Unit
 ) {
-    val topP by viewModel.topP.collectAsState()
-    val topK by viewModel.topK.collectAsState()
-    val temperature by viewModel.temperature.collectAsState()
     val maxTokens by viewModel.maxTokens.collectAsState()
     val recentMessages by viewModel.recentMessages.collectAsState()
     val recentCallLogs by viewModel.recentCallLogs.collectAsState()
+    val ragTopK by viewModel.ragTopK.collectAsState()
 
     Scaffold(topBar = {
         TopAppBar(
@@ -48,25 +46,6 @@ fun AdvancedOptionsScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            HyperparameterSlider(
-                label = "Top P",
-                value = topP,
-                onValueChange = { viewModel.saveTopP(it) },
-                valueRange = 0f..1f,
-                steps = 100
-            )
-            HyperparameterInputField(
-                label = "Top K",
-                value = topK,
-                onValueChange = { viewModel.saveTopK(it) }
-            )
-            HyperparameterSlider(
-                label = "Temperature",
-                value = temperature,
-                onValueChange = { viewModel.saveTemperature(it) },
-                valueRange = 0f..2f,
-                steps = 20
-            )
             HyperparameterInputField(
                 label = "Max Tokens",
                 value = maxTokens,
@@ -82,6 +61,12 @@ fun AdvancedOptionsScreen(
                 label = "Recent Call Logs",
                 value = recentCallLogs,
                 onValueChange = { viewModel.saveRecentCallLogs(it) },
+                valueRange = 1..10
+            )
+            HyperparameterIntSlider(
+                label = "Document Chunks (Top K)",
+                value = ragTopK,
+                onValueChange = { viewModel.saveRagTopK(it) },
                 valueRange = 1..10
             )
         }

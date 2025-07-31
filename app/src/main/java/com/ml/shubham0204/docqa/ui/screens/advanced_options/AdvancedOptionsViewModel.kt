@@ -11,14 +11,6 @@ class AdvancedOptionsViewModel(
     private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
-    private val _topP = MutableStateFlow(0f)
-    val topP: StateFlow<Float> = _topP
-
-    private val _topK = MutableStateFlow(0)
-    val topK: StateFlow<Int> = _topK
-
-    private val _temperature = MutableStateFlow(0f)
-    val temperature: StateFlow<Float> = _temperature
 
     private val _maxTokens = MutableStateFlow(0)
     val maxTokens: StateFlow<Int> = _maxTokens
@@ -29,32 +21,18 @@ class AdvancedOptionsViewModel(
     private val _recentCallLogs = MutableStateFlow(0)
     val recentCallLogs: StateFlow<Int> = _recentCallLogs
 
+    private val _ragTopK = MutableStateFlow(0)
+    val ragTopK: StateFlow<Int> = _ragTopK
+
     init {
         loadSettings()
     }
 
     private fun loadSettings() {
-        _topP.value = settingsRepository.getTopP()
-        _topK.value = settingsRepository.getTopK()
-        _temperature.value = settingsRepository.getTemperature()
         _maxTokens.value = settingsRepository.getMaxTokens()
         _recentMessages.value = settingsRepository.getRecentMessages()
         _recentCallLogs.value = settingsRepository.getRecentCallLogs()
-    }
-
-    fun saveTopP(value: Float) {
-        _topP.value = value
-        viewModelScope.launch { settingsRepository.saveTopP(value) }
-    }
-
-    fun saveTopK(value: Int) {
-        _topK.value = value
-        viewModelScope.launch { settingsRepository.saveTopK(value) }
-    }
-
-    fun saveTemperature(value: Float) {
-        _temperature.value = value
-        viewModelScope.launch { settingsRepository.saveTemperature(value) }
+        _ragTopK.value = settingsRepository.getRagTopK()
     }
 
     fun saveMaxTokens(value: Int) {
@@ -70,5 +48,10 @@ class AdvancedOptionsViewModel(
     fun saveRecentCallLogs(value: Int) {
         _recentCallLogs.value = value
         viewModelScope.launch { settingsRepository.saveRecentCallLogs(value) }
+    }
+
+    fun saveRagTopK(value: Int) {
+        _ragTopK.value = value
+        viewModelScope.launch { settingsRepository.saveRagTopK(value) }
     }
 } 

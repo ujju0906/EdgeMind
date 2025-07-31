@@ -375,7 +375,7 @@ class ChatViewModel(
                         Log.d("ChatViewModel", "Query embedding created successfully")
                         
                         // Reduced from 5 to 3 chunks to reduce context length
-                        val similarChunks = chunksDB.getSimilarChunks(queryEmbedding, n = 3)
+                        val similarChunks = chunksDB.getSimilarChunks(queryEmbedding, n = settingsRepository.getRagTopK())
                         Log.d("ChatViewModel", "Similar chunks retrieved: ${similarChunks.size}")
                         
                         if (similarChunks.isNotEmpty()) {
@@ -676,7 +676,7 @@ class ChatViewModel(
                 
                 if (_isDocumentContextEnabled.value) {
                     val queryEmbedding = sentenceEncoder.encodeText(testQuery)
-                    val similarChunks = chunksDB.getSimilarChunks(queryEmbedding, n = 1)
+                    val similarChunks = chunksDB.getSimilarChunks(queryEmbedding, n = settingsRepository.getRagTopK())
                     Log.d("ChatViewModel", "Test document chunks found: ${similarChunks.size}")
                     if (similarChunks.isNotEmpty()) {
                         testContext += "📄 TEST DOC: ${similarChunks.first().second.docFileName}\n"
