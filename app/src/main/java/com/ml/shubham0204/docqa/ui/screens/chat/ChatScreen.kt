@@ -581,7 +581,7 @@ fun ChatScreen(
                 TopAppBar(
                     title = { 
                         Text(
-                            text = "EdgeMind", 
+                            text = "", 
                             style = if (isTablet) MaterialTheme.typography.headlineMedium else MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.SemiBold
                         ) 

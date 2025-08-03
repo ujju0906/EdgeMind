@@ -18,11 +18,11 @@ class SettingsRepository(context: Context) {
     fun getMaxTokens(): Int = prefs.getInt(KEY_MAX_TOKENS, 1024)
 
     fun saveRecentMessages(value: Int) = prefs.edit().putInt(KEY_RECENT_MESSAGES, value).apply()
-    fun getRecentMessages(): Int = prefs.getInt(KEY_RECENT_MESSAGES, 10)
+    fun getRecentMessages(): Int = prefs.getInt(KEY_RECENT_MESSAGES, 5)
 
     fun saveRecentCallLogs(value: Int) = prefs.edit().putInt(KEY_RECENT_CALL_LOGS, value).apply()
     fun getRecentCallLogs(): Int = prefs.getInt(KEY_RECENT_CALL_LOGS, 10)
 
     fun saveRagTopK(value: Int) = prefs.edit().putInt(KEY_RAG_TOP_K, value).apply()
-    fun getRagTopK(): Int = prefs.getInt(KEY_RAG_TOP_K, 5)
+    fun getRagTopK(): Int = prefs.getInt(KEY_RAG_TOP_K, 3)
 } 
