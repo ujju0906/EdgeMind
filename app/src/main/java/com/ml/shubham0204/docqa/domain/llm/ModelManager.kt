@@ -45,7 +45,7 @@ class ModelManager(private val context: Context) {
                 description = "Microsoft's efficient Phi-4 mini model",
                 url = "https://huggingface.co/litert-community/Phi-4-mini-instruct/resolve/main/Phi-4-mini-instruct_multi-prefill-seq_q8_ekv1280.task?download=true",
                 filename = "Phi-4-mini-instruct_multi-prefill-seq_q8_ekv1280.task",
-                sizeInGB = 1.2f,
+                sizeInGB = 3.7f,
                 parameters = "1.3B",
                 quantization = "8-bit"
             ),
@@ -56,7 +56,7 @@ class ModelManager(private val context: Context) {
                 description = "Larger 3B parameter model for better quality",
                 url = "https://huggingface.co/litert-community/Qwen2.5-3B-Instruct/resolve/main/Qwen2.5-3B-Instruct_multi-prefill-seq_q8_ekv1280.task?download=true",
                 filename = "Qwen2.5-3B-Instruct_multi-prefill-seq_q8_ekv1280.task",
-                sizeInGB = 3.2f,
+                sizeInGB = 3f,
                 parameters = "3B",
                 quantization = "8-bit"
             )

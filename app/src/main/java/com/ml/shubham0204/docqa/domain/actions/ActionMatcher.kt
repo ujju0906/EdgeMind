@@ -13,7 +13,7 @@ class ActionMatcher(
 ) {
 
     private var actions = getPredefinedActions(context)
-    private val similarityThreshold = 0.7f
+    private val similarityThreshold = 0.6f
     private val appActionSimilarityThreshold = 0.5f // Lower threshold for app actions
 
     init {
