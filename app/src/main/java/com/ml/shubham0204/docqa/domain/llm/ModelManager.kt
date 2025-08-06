@@ -17,6 +17,7 @@ data class ModelInfo(
     val sizeInGB: Float,
     val parameters: String,
     val quantization: String,
+    val requiresAuth: Boolean = false,
     val isDownloaded: Boolean = false,
     val fileSize: Long = 0L
 )
@@ -59,6 +60,17 @@ class ModelManager(private val context: Context) {
                 sizeInGB = 3f,
                 parameters = "3B",
                 quantization = "8-bit"
+            ),
+            ModelInfo(
+                id = "gemma-3n-e2b-it-int4",
+                name = "Gemma-3n-E2B-it-int4",
+                description = "Preview version of Gemma 3n E2B ready for deployment on Android using the MediaPipe LLM Inference API.",
+                url = "https://huggingface.co/google/gemma-3n-E2B-it-litert-preview/resolve/main/gemma-3n-E2B-it-int4.task",
+                filename = "gemma-3n-E2B-it-int4.task",
+                sizeInGB = 2.92f,
+                parameters = "2B (effective)",
+                quantization = "int4",
+                requiresAuth = true
             )
         )
     }

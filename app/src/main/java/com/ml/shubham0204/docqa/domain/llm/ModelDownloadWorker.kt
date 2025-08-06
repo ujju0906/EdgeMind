@@ -53,6 +53,19 @@ class ModelDownloadWorker(
     private var connectivityManager: ConnectivityManager? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
+    private fun getHuggingFaceToken(): String? {
+        return try {
+            val properties = java.util.Properties()
+            applicationContext.assets.open("local.properties").use {
+                properties.load(it)
+                properties.getProperty("hf.token")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Could not read hf.token from local.properties", e)
+            null
+        }
+    }
+
     override suspend fun doWork(): Result {
         return try {
             // Get model ID from input data
@@ -195,7 +208,14 @@ class ModelDownloadWorker(
                 try {
                     val url = URL(modelInfo.url)
                     val connection = url.openConnection() as HttpURLConnection
-                    
+
+                    if (modelInfo.requiresAuth) {
+                        val token = getHuggingFaceToken()
+                        if (token != null) {
+                            connection.setRequestProperty("Authorization", "Bearer $token")
+                        }
+                    }
+
                     // Optimize connection settings for faster downloads
                     connection.connectTimeout = CONNECT_TIMEOUT
                     connection.readTimeout = READ_TIMEOUT
