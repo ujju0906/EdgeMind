@@ -47,6 +47,6 @@ val appModule = module {
     viewModel { ChatViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { DocsViewModel(get(), get(), get()) }
     viewModel { EditAPIKeyViewModel(get()) }
-    viewModel { ModelDownloadViewModel(get(), androidContext(), get()) }
+    viewModel { ModelDownloadViewModel(get(), androidContext(), get(), get()) }
     viewModel { AdvancedOptionsViewModel(get()) }
 }

@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.ui.screens.advanced_options
+git package com.ml.shubham0204.docqa.ui.screens.advanced_options
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -24,6 +24,9 @@ class AdvancedOptionsViewModel(
     private val _ragTopK = MutableStateFlow(0)
     val ragTopK: StateFlow<Int> = _ragTopK
 
+    private val _hfToken = MutableStateFlow("")
+    val hfToken: StateFlow<String> = _hfToken
+
     init {
         loadSettings()
     }
@@ -33,25 +36,36 @@ class AdvancedOptionsViewModel(
         _recentMessages.value = settingsRepository.getRecentMessages()
         _recentCallLogs.value = settingsRepository.getRecentCallLogs()
         _ragTopK.value = settingsRepository.getRagTopK()
+        _hfToken.value = settingsRepository.getHuggingFaceToken() ?: ""
     }
 
     fun saveMaxTokens(value: Int) {
         _maxTokens.value = value
-        viewModelScope.launch { settingsRepository.saveMaxTokens(value) }
     }
 
     fun saveRecentMessages(value: Int) {
         _recentMessages.value = value
-        viewModelScope.launch { settingsRepository.saveRecentMessages(value) }
     }
 
     fun saveRecentCallLogs(value: Int) {
         _recentCallLogs.value = value
-        viewModelScope.launch { settingsRepository.saveRecentCallLogs(value) }
     }
 
     fun saveRagTopK(value: Int) {
         _ragTopK.value = value
-        viewModelScope.launch { settingsRepository.saveRagTopK(value) }
+    }
+
+    fun saveHuggingFaceToken(token: String) {
+        _hfToken.value = token
+    }
+
+    fun saveAllSettings() {
+        viewModelScope.launch {
+            settingsRepository.saveMaxTokens(_maxTokens.value)
+            settingsRepository.saveRecentMessages(_recentMessages.value)
+            settingsRepository.saveRecentCallLogs(_recentCallLogs.value)
+            settingsRepository.saveRagTopK(_ragTopK.value)
+            settingsRepository.saveHuggingFaceToken(_hfToken.value)
+        }
     }
 } 

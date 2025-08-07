@@ -11,6 +11,7 @@ import com.ml.shubham0204.docqa.domain.llm.ModelManager
 import com.ml.shubham0204.docqa.domain.llm.AppLLMProvider
 import com.ml.shubham0204.docqa.domain.llm.LLMFactory
 import com.ml.shubham0204.docqa.domain.llm.ModelInfo
+import com.ml.shubham0204.docqa.data.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -20,7 +21,8 @@ import java.util.UUID
 class ModelDownloadViewModel(
     private val modelManager: ModelManager,
     private val context: Context,
-    private val llmFactory: LLMFactory
+    private val llmFactory: LLMFactory,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
     
     private val workManager = WorkManager.getInstance(context)
@@ -93,12 +95,30 @@ class ModelDownloadViewModel(
             _downloadState.value = DownloadState.Error("Model already downloaded: ${modelInfo.name}")
             return
         }
-        
-        val workRequest = OneTimeWorkRequestBuilder<ModelDownloadWorker>()
+
+        val workRequestBuilder = OneTimeWorkRequestBuilder<ModelDownloadWorker>()
             .addTag("model_download")
-            .setInputData(androidx.work.workDataOf(ModelDownloadWorker.KEY_MODEL_ID to modelId))
-            .build()
-        
+
+        if (modelInfo.requiresAuth) {
+            val token = settingsRepository.getHuggingFaceToken()
+            if (token.isNullOrEmpty()) {
+                _downloadState.value = DownloadState.Error("Hugging Face token not set")
+                return
+            }
+            workRequestBuilder.setInputData(
+                androidx.work.workDataOf(
+                    ModelDownloadWorker.KEY_MODEL_ID to modelId,
+                    "access_token" to token
+                )
+            )
+        } else {
+            workRequestBuilder.setInputData(
+                androidx.work.workDataOf(ModelDownloadWorker.KEY_MODEL_ID to modelId)
+            )
+        }
+
+        val workRequest = workRequestBuilder.build()
+
         currentWorkId = workRequest.id
         currentDownloadingModelId = modelId
         workManager.enqueue(workRequest)

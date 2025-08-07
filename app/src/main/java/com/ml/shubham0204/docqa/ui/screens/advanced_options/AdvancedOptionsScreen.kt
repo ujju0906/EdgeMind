@@ -24,6 +24,21 @@ fun AdvancedOptionsScreen(
     val recentMessages by viewModel.recentMessages.collectAsState()
     val recentCallLogs by viewModel.recentCallLogs.collectAsState()
     val ragTopK by viewModel.ragTopK.collectAsState()
+    val hfToken by viewModel.hfToken.collectAsState()
+
+    var maxTokensValue by remember { mutableStateOf(maxTokens) }
+    var recentMessagesValue by remember { mutableStateOf(recentMessages) }
+    var recentCallLogsValue by remember { mutableStateOf(recentCallLogs) }
+    var ragTopKValue by remember { mutableStateOf(ragTopK) }
+    var hfTokenValue by remember { mutableStateOf(hfToken) }
+
+    LaunchedEffect(maxTokens, recentMessages, recentCallLogs, ragTopK, hfToken) {
+        maxTokensValue = maxTokens
+        recentMessagesValue = recentMessages
+        recentCallLogsValue = recentCallLogs
+        ragTopKValue = ragTopK
+        hfTokenValue = hfToken
+    }
 
     Scaffold(topBar = {
         TopAppBar(
@@ -48,27 +63,42 @@ fun AdvancedOptionsScreen(
         ) {
             HyperparameterInputField(
                 label = "Max Tokens",
-                value = maxTokens,
-                onValueChange = { viewModel.saveMaxTokens(it) }
+                value = maxTokensValue,
+                onValueChange = { maxTokensValue = it }
             )
             HyperparameterIntSlider(
                 label = "Recent Messages",
-                value = recentMessages,
-                onValueChange = { viewModel.saveRecentMessages(it) },
+                value = recentMessagesValue,
+                onValueChange = { recentMessagesValue = it },
                 valueRange = 1..10
             )
             HyperparameterIntSlider(
                 label = "Recent Call Logs",
-                value = recentCallLogs,
-                onValueChange = { viewModel.saveRecentCallLogs(it) },
+                value = recentCallLogsValue,
+                onValueChange = { recentCallLogsValue = it },
                 valueRange = 1..10
             )
             HyperparameterIntSlider(
                 label = "Document Chunks (Top K)",
-                value = ragTopK,
-                onValueChange = { viewModel.saveRagTopK(it) },
+                value = ragTopKValue,
+                onValueChange = { ragTopKValue = it },
                 valueRange = 1..10
             )
+            HyperparameterInputField(
+                label = "Hugging Face Token",
+                value = hfTokenValue,
+                onValueChange = { hfTokenValue = it }
+            )
+            Button(onClick = {
+                viewModel.saveMaxTokens(maxTokensValue)
+                viewModel.saveRecentMessages(recentMessagesValue)
+                viewModel.saveRecentCallLogs(recentCallLogsValue)
+                viewModel.saveRagTopK(ragTopKValue)
+                viewModel.saveHuggingFaceToken(hfTokenValue)
+                viewModel.saveAllSettings()
+            }) {
+                Text("Save")
+            }
         }
     }
 }
@@ -104,6 +134,22 @@ fun HyperparameterInputField(
             value = value.toString(),
             onValueChange = { onValueChange(it.toIntOrNull() ?: 0) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
+fun HyperparameterInputField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Text(text = label)
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth()
         )
     }
