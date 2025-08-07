@@ -2,10 +2,9 @@
     <string name="app_name">EdgeMind</string>
 
     <string name="prompt_1">
-You are an AI assistant. Answer the user query naturally and helpfully.
+You are an AI assistant. Answer the user query naturally and helpfully based on the context provided.
 Context: $CONTEXT
-Query: $QUERY
-If the context is relevant, use it. If not, respond with current knowledge.
+Query: $QUERY.
 Now answer:
 </string>
 

@@ -17,6 +17,7 @@ data class ModelInfo(
     val sizeInGB: Float,
     val parameters: String,
     val quantization: String,
+    val huggingFaceUrl: String? = null,
     val requiresAuth: Boolean = false,
     val isDownloaded: Boolean = false,
     val fileSize: Long = 0L
@@ -64,12 +65,25 @@ class ModelManager(private val context: Context) {
             ModelInfo(
                 id = "gemma-3n-e2b-it-int4",
                 name = "Gemma-3n-E2B-it-int4",
-                description = "Preview version of Gemma 3n E2B ready for deployment on Android using the MediaPipe LLM Inference API.",
+                description = "Need Hugging Face token to download, add the token in the advanced options after getting the access to download the model",
                 url = "https://huggingface.co/google/gemma-3n-E2B-it-litert-preview/resolve/main/gemma-3n-E2B-it-int4.task",
                 filename = "gemma-3n-E2B-it-int4.task",
-                sizeInGB = 2.92f,
+                sizeInGB = 3.1f,
                 parameters = "2B (effective)",
                 quantization = "int4",
+                huggingFaceUrl = "https://huggingface.co/google/gemma-3n-E2B-it-litert-preview",
+                requiresAuth = true
+            ),
+            ModelInfo(
+                id = "gemma-3n-e4b-it-int4",
+                name = "Gemma-3n-E4B-it-int4",
+                description = "Need Hugging Face token to download, add the token in the advanced options after getting the access to download the model.",
+                url = "https://huggingface.co/google/gemma-3n-E4B-it-litert-preview/resolve/main/gemma-3n-E4B-it-int4.task",
+                filename = "gemma-3n-E4B-it-int4.task",
+                sizeInGB = 4.4f,
+                parameters = "4B (effective)",
+                quantization = "int4",
+                huggingFaceUrl = "https://huggingface.co/google/gemma-3n-E4B-it-litert-preview",
                 requiresAuth = true
             )
         )

@@ -59,6 +59,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withStyle
 import com.ml.shubham0204.docqa.domain.llm.ModelInfo
 import com.ml.shubham0204.docqa.ui.components.PermissionHelper
 import com.ml.shubham0204.docqa.ui.components.RequestNotificationPermission
@@ -519,6 +527,7 @@ fun ModelDownloadScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ModelCard(
     model: ModelInfo,
@@ -531,6 +540,7 @@ fun ModelCard(
     val configuration = LocalConfiguration.current
     val isTablet = configuration.screenWidthDp.dp >= 600.dp
     val maxCardWidth = if (isTablet) 400.dp else configuration.screenWidthDp.dp - 32.dp
+    val uriHandler = LocalUriHandler.current
     
     Card(
         modifier = Modifier
@@ -574,6 +584,24 @@ fun ModelCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    
+                    model.huggingFaceUrl?.let { url ->
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val annotatedString = buildAnnotatedString {
+                            withStyle(style = SpanStyle(
+                                color = MaterialTheme.colorScheme.primary,
+                                textDecoration = TextDecoration.Underline
+                            )) {
+                                append("Get Access to Download from Hugging Face")
+                            }
+                        }
+                        ClickableText(
+                            text = annotatedString,
+                            onClick = {
+                                uriHandler.openUri(url)
+                            }
+                        )
+                    }
                 }
                 
                 // Status Icon

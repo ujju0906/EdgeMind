@@ -1,4 +1,4 @@
-git package com.ml.shubham0204.docqa.ui.screens.advanced_options
+package com.ml.shubham0204.docqa.ui.screens.advanced_options
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

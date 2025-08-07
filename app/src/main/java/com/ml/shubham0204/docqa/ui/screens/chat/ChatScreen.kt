@@ -30,6 +30,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDownload
@@ -88,8 +89,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
@@ -1110,6 +1114,7 @@ fun ChatScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatMessageItem(
     message: ChatMessage,
@@ -1117,11 +1122,27 @@ fun ChatMessageItem(
     onShare: () -> Unit
 ) {
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     val dateFormat = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
     val formattedDate = dateFormat.format(Date(message.timestamp))
     
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = { /* No-op */ },
+                onLongClick = {
+                    val textToCopy = if (message.isUserMessage) {
+                        message.question
+                    } else {
+                        message.response
+                    }
+                    clipboardManager.setText(AnnotatedString(textToCopy))
+                    Toast
+                        .makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            ),
         colors = CardDefaults.cardColors(
             containerColor = if (message.isUserMessage) 
                 MaterialTheme.colorScheme.primaryContainer 

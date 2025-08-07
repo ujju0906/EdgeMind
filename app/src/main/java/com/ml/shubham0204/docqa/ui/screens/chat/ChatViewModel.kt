@@ -411,11 +411,6 @@ class ChatViewModel(
                     jointContext = "No additional context available due to an error."
                 }
                 
-                // If no context was built, provide a helpful message
-                if (jointContext.isEmpty()) {
-                    jointContext = "No context information is currently available. Please enable SMS, call logs, or document context to get more relevant responses."
-                }
-                
                 _retrievedContextListState.value = retrievedContextList
                 
                 // Store the original context for display
@@ -425,10 +420,15 @@ class ChatViewModel(
                 val truncatedContext = truncateContext(jointContext, maxLength = 1500)
                 Log.d("ChatViewModel", "Original context length: ${jointContext.length}, Truncated context length: ${truncatedContext.length}")
                 
-                // Enhance the prompt based on query type
-                val enhancedPrompt = enhancePromptForQuery(prompt, query, truncatedContext)
-                val inputPrompt = enhancedPrompt.replace("\$CONTEXT", truncatedContext).replace("\$QUERY", query)
+                
+                val inputPrompt = if (jointContext.isEmpty()) {
+                    "You are an AI assistant please help answer the query? Query: $query"
+                } else {
+                    prompt.replace("\$CONTEXT", truncatedContext).replace("\$QUERY", query)
+                }
+                
                 Log.d("ChatViewModel", "Final input prompt length: ${inputPrompt.length}")
+                Log.d("ChatViewModel", "Final input prompt: $inputPrompt")
                 
                 // Additional safety check for input length
                 if (inputPrompt.length > 3000) {
