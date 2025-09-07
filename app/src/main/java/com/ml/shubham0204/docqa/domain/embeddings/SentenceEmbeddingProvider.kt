@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.domain.embeddings
+package com.ml.EdgeBrain.docqa.domain.embeddings
 
 import android.content.Context
 import android.util.Log

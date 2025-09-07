@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.domain.llm
+package com.ml.EdgeBrain.docqa.domain.llm
 
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
@@ -6,8 +6,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import com.ml.shubham0204.docqa.domain.llm.LocalLLMAPI
-import com.ml.shubham0204.docqa.domain.llm.GeminiRemoteAPI
+import com.ml.EdgeBrain.docqa.domain.llm.LocalLLMAPI
+import com.ml.EdgeBrain.docqa.domain.llm.GeminiRemoteAPI
 
 sealed class LLMInitializationState {
     object NotInitialized : LLMInitializationState()

@@ -1,6 +1,6 @@
-package com.ml.shubham0204.docqa.domain.actions
+package com.ml.EdgeBrain.docqa.domain.actions
 
-import com.ml.shubham0204.docqa.domain.embeddings.SentenceEmbeddingProvider
+import com.ml.EdgeBrain.docqa.domain.embeddings.SentenceEmbeddingProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

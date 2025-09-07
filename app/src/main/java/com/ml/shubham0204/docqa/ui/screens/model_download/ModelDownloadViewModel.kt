@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.ui.screens.model_download
+package com.ml.EdgeBrain.docqa.ui.screens.model_download
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
@@ -6,12 +6,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.ml.shubham0204.docqa.domain.llm.ModelDownloadWorker
-import com.ml.shubham0204.docqa.domain.llm.ModelManager
-import com.ml.shubham0204.docqa.domain.llm.AppLLMProvider
-import com.ml.shubham0204.docqa.domain.llm.LLMFactory
-import com.ml.shubham0204.docqa.domain.llm.ModelInfo
-import com.ml.shubham0204.docqa.data.SettingsRepository
+import com.ml.EdgeBrain.docqa.domain.llm.ModelDownloadWorker
+import com.ml.EdgeBrain.docqa.domain.llm.ModelManager
+import com.ml.EdgeBrain.docqa.domain.llm.AppLLMProvider
+import com.ml.EdgeBrain.docqa.domain.llm.LLMFactory
+import com.ml.EdgeBrain.docqa.domain.llm.ModelInfo
+import com.ml.EdgeBrain.docqa.data.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch

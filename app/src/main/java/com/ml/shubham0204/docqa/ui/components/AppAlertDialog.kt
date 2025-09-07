@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.ui.components
+package com.ml.EdgeBrain.docqa.ui.components
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text

@@ -1,14 +1,14 @@
-package com.ml.shubham0204.docqa.ui.screens.docs
+package com.ml.EdgeBrain.docqa.ui.screens.docs
 
 import android.content.Context
 import androidx.lifecycle.ViewModel
-import com.ml.shubham0204.docqa.data.Chunk
-import com.ml.shubham0204.docqa.data.ChunksDB
-import com.ml.shubham0204.docqa.data.Document
-import com.ml.shubham0204.docqa.data.DocumentsDB
-import com.ml.shubham0204.docqa.domain.embeddings.SentenceEmbeddingProvider
-import com.ml.shubham0204.docqa.domain.readers.Readers
-import com.ml.shubham0204.docqa.domain.splitters.WhiteSpaceSplitter
+import com.ml.EdgeBrain.docqa.data.Chunk
+import com.ml.EdgeBrain.docqa.data.ChunksDB
+import com.ml.EdgeBrain.docqa.data.Document
+import com.ml.EdgeBrain.docqa.data.DocumentsDB
+import com.ml.EdgeBrain.docqa.domain.embeddings.SentenceEmbeddingProvider
+import com.ml.EdgeBrain.docqa.domain.readers.Readers
+import com.ml.EdgeBrain.docqa.domain.splitters.WhiteSpaceSplitter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext

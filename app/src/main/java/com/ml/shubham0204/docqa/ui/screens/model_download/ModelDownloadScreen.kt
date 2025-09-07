@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.ui.screens.model_download
+package com.ml.EdgeBrain.docqa.ui.screens.model_download
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -67,10 +67,10 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
-import com.ml.shubham0204.docqa.domain.llm.ModelInfo
-import com.ml.shubham0204.docqa.ui.components.PermissionHelper
-import com.ml.shubham0204.docqa.ui.components.RequestNotificationPermission
-import com.ml.shubham0204.docqa.ui.theme.DocQATheme
+import com.ml.EdgeBrain.docqa.domain.llm.ModelInfo
+import com.ml.EdgeBrain.docqa.ui.components.PermissionHelper
+import com.ml.EdgeBrain.docqa.ui.components.RequestNotificationPermission
+import com.ml.EdgeBrain.docqa.ui.theme.DocQATheme
 import org.koin.androidx.compose.koinViewModel
 import androidx.compose.ui.platform.LocalContext
 

@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.ui.theme
+package com.ml.EdgeBrain.docqa.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

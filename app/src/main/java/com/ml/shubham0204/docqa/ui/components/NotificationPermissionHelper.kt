@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.ui.components
+package com.ml.EdgeBrain.docqa.ui.components
 
 import android.Manifest
 import android.content.Context

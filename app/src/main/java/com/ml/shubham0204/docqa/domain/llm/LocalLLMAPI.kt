@@ -1,10 +1,10 @@
-package com.ml.shubham0204.docqa.domain.llm
+package com.ml.EdgeBrain.docqa.domain.llm
 
 import android.content.Context
 import android.util.Log
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
 import com.google.mediapipe.tasks.genai.llminference.LlmInference.LlmInferenceOptions
-import com.ml.shubham0204.docqa.data.SettingsRepository
+import com.ml.EdgeBrain.docqa.data.SettingsRepository
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow

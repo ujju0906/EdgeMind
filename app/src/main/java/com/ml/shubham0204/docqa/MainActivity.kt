@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa
+package com.ml.EdgeBrain.docqa
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -9,11 +9,11 @@ import androidx.compose.animation.fadeOut
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.ml.shubham0204.docqa.ui.screens.advanced_options.AdvancedOptionsScreen
-import com.ml.shubham0204.docqa.ui.screens.chat.ChatScreen
-import com.ml.shubham0204.docqa.ui.screens.docs.DocsScreen
-import com.ml.shubham0204.docqa.ui.screens.edit_api_key.EditAPIKeyScreen
-import com.ml.shubham0204.docqa.ui.screens.model_download.ModelDownloadScreen
+import com.ml.EdgeBrain.docqa.ui.screens.advanced_options.AdvancedOptionsScreen
+import com.ml.EdgeBrain.docqa.ui.screens.chat.ChatScreen
+import com.ml.EdgeBrain.docqa.ui.screens.docs.DocsScreen
+import com.ml.EdgeBrain.docqa.ui.screens.edit_api_key.EditAPIKeyScreen
+import com.ml.EdgeBrain.docqa.ui.screens.model_download.ModelDownloadScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.ui.screens.docs
+package com.ml.EdgeBrain.docqa.ui.screens.docs
 
 import AppProgressDialog
 import android.content.Intent
@@ -57,11 +57,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.ml.shubham0204.docqa.data.Document
-import com.ml.shubham0204.docqa.domain.readers.Readers
-import com.ml.shubham0204.docqa.ui.components.AppAlertDialog
-import com.ml.shubham0204.docqa.ui.components.createAlertDialog
-import com.ml.shubham0204.docqa.ui.theme.DocQATheme
+import com.ml.EdgeBrain.docqa.data.Document
+import com.ml.EdgeBrain.docqa.domain.readers.Readers
+import com.ml.EdgeBrain.docqa.ui.components.AppAlertDialog
+import com.ml.EdgeBrain.docqa.ui.components.createAlertDialog
+import com.ml.EdgeBrain.docqa.ui.theme.DocQATheme
 import hideProgressDialog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

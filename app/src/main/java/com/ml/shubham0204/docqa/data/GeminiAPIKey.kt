@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.data
+package com.ml.EdgeBrain.docqa.data
 
 import android.content.Context
 import android.content.SharedPreferences

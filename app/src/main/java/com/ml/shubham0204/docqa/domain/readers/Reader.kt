@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.domain.readers
+package com.ml.EdgeBrain.docqa.domain.readers
 
 import java.io.InputStream
 

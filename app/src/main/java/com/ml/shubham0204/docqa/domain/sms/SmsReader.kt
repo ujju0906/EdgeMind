@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.domain.sms
+package com.ml.EdgeBrain.docqa.domain.sms
 
 import android.content.Context
 import android.content.pm.PackageManager

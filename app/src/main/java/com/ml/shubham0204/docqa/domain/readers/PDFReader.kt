@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.domain.readers
+package com.ml.EdgeBrain.docqa.domain.readers
 
 import com.itextpdf.text.pdf.PdfReader
 import com.itextpdf.text.pdf.parser.PdfTextExtractor

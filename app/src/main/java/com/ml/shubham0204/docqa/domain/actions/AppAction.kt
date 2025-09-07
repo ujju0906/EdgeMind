@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.domain.actions
+package com.ml.EdgeBrain.docqa.domain.actions
 
 import android.content.Context
 import android.content.Intent

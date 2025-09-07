@@ -1,8 +1,8 @@
-package com.ml.shubham0204.docqa.domain.llm
+package com.ml.EdgeBrain.docqa.domain.llm
 
 import android.content.Context
-import com.ml.shubham0204.docqa.data.GeminiAPIKey
-import com.ml.shubham0204.docqa.data.SettingsRepository
+import com.ml.EdgeBrain.docqa.data.GeminiAPIKey
+import com.ml.EdgeBrain.docqa.data.SettingsRepository
 
 class LLMFactory(
     private val context: Context,

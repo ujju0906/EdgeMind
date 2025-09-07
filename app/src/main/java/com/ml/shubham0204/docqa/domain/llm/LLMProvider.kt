@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.domain.llm
+package com.ml.EdgeBrain.docqa.domain.llm
 
 import kotlinx.coroutines.flow.Flow
 

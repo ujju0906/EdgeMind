@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.ui.components
+package com.ml.EdgeBrain.docqa.ui.components
 
 import android.Manifest
 import android.content.Context
@@ -14,7 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import java.io.File
-import com.ml.shubham0204.docqa.ui.components.NotificationPermissionHelper
+import com.ml.EdgeBrain.docqa.ui.components.NotificationPermissionHelper
 
 object PermissionHelper {
     fun hasCallLogPermission(context: Context): Boolean {

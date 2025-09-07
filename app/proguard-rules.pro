@@ -156,8 +156,8 @@
 # ============================================================================
 
 # Keep custom sentence embeddings AAR classes
--keep class com.github.shubham0204.** { *; }
--keepclassmembers class com.github.shubham0204.** { *; }
+-keep class com.github.EdgeBrain.** { *; }
+-keepclassmembers class com.github.EdgeBrain.** { *; }
 
 # Keep any classes in the custom AAR
 -keep class sentence_embeddings.** { *; }
@@ -188,20 +188,20 @@
 # ============================================================================
 
 # Keep all classes in the app package
--keep class com.ml.shubham0204.docqa.** { *; }
--keepclassmembers class com.ml.shubham0204.docqa.** { *; }
+-keep class com.ml.EdgeBrain.docqa.** { *; }
+-keepclassmembers class com.ml.EdgeBrain.docqa.** { *; }
 
 # Keep data models
--keep class com.ml.shubham0204.docqa.data.** { *; }
--keepclassmembers class com.ml.shubham0204.docqa.data.** { *; }
+-keep class com.ml.EdgeBrain.docqa.data.** { *; }
+-keepclassmembers class com.ml.EdgeBrain.docqa.data.** { *; }
 
 # Keep domain classes
--keep class com.ml.shubham0204.docqa.domain.** { *; }
--keepclassmembers class com.ml.shubham0204.docqa.domain.** { *; }
+-keep class com.ml.EdgeBrain.docqa.domain.** { *; }
+-keepclassmembers class com.ml.EdgeBrain.docqa.domain.** { *; }
 
 # Keep UI classes
--keep class com.ml.shubham0204.docqa.ui.** { *; }
--keepclassmembers class com.ml.shubham0204.docqa.ui.** { *; }
+-keep class com.ml.EdgeBrain.docqa.ui.** { *; }
+-keepclassmembers class com.ml.EdgeBrain.docqa.ui.** { *; }
 
 # Keep ViewModels
 -keep class * extends androidx.lifecycle.ViewModel { *; }
@@ -305,7 +305,7 @@
 -dontwarn com.google.mediapipe.**
 -dontwarn io.insert-koin.**
 -dontwarn com.github.jeziellago.**
--dontwarn com.github.shubham0204.**
+-dontwarn com.github.EdgeBrain.**
 
 # Don't warn about missing classes
 -dontwarn android.support.**

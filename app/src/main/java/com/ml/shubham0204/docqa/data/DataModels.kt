@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.data
+package com.ml.EdgeBrain.docqa.data
 
 import io.objectbox.annotation.Entity
 import io.objectbox.annotation.HnswIndex

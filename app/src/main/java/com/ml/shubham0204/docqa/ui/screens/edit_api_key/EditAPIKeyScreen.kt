@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.ui.screens.edit_api_key
+package com.ml.EdgeBrain.docqa.ui.screens.edit_api_key
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
@@ -29,7 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.ml.shubham0204.docqa.ui.theme.DocQATheme
+import com.ml.EdgeBrain.docqa.ui.theme.DocQATheme
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)

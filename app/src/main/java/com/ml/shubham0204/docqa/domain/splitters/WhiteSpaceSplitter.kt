@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.domain.splitters
+package com.ml.EdgeBrain.docqa.domain.splitters
 
 import kotlin.math.max
 import kotlin.math.min

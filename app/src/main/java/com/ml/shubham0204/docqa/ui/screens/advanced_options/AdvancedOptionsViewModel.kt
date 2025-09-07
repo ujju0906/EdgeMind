@@ -1,8 +1,8 @@
-package com.ml.shubham0204.docqa.ui.screens.advanced_options
+package com.ml.EdgeBrain.docqa.ui.screens.advanced_options
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ml.shubham0204.docqa.data.SettingsRepository
+import com.ml.EdgeBrain.docqa.data.SettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch

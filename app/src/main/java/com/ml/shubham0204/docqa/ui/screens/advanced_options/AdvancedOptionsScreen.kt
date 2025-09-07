@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.ui.screens.advanced_options
+package com.ml.EdgeBrain.docqa.ui.screens.advanced_options
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState

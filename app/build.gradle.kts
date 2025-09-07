@@ -11,11 +11,11 @@ import com.example.build.loadProperties
 val localProperties = loadProperties(rootProject.file("local.properties"))
 
 android {
-    namespace = "com.ml.shubham0204.docqa"
+    namespace = "com.ml.EdgeBrain.docqa"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.ml.shubham0204.docqa"
+        applicationId = "com.ml.EdgeBrain.docqa"
         minSdk = 29
         targetSdk = 35
         versionCode = 1
@@ -104,7 +104,7 @@ dependencies {
     implementation(libs.apache.poi.ooxml)
 
     // Sentence Embeddings
-    // https://github.com/shubham0204/Sentence-Embeddings-Android
+    // https://github.com/EdgeBrain/Sentence-Embeddings-Android
     implementation(files("libs/sentence_embeddings.aar"))
     implementation(libs.onnxruntime.android)
 

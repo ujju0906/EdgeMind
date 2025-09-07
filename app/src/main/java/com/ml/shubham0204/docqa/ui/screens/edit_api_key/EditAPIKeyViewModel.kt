@@ -1,7 +1,7 @@
-package com.ml.shubham0204.docqa.ui.screens.edit_api_key
+package com.ml.EdgeBrain.docqa.ui.screens.edit_api_key
 
 import androidx.lifecycle.ViewModel
-import com.ml.shubham0204.docqa.data.GeminiAPIKey
+import com.ml.EdgeBrain.docqa.data.GeminiAPIKey
 import org.koin.android.annotation.KoinViewModel
 
 @KoinViewModel

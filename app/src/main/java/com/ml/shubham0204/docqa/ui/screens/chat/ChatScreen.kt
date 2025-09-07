@@ -1,4 +1,4 @@
-package com.ml.shubham0204.docqa.ui.screens.chat
+package com.ml.EdgeBrain.docqa.ui.screens.chat
 
 import android.Manifest
 import android.app.Activity
@@ -97,12 +97,12 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
-import com.ml.shubham0204.docqa.R
-import com.ml.shubham0204.docqa.data.*
-import com.ml.shubham0204.docqa.domain.llm.AppLLMProvider
-import com.ml.shubham0204.docqa.domain.llm.LLMInitializationState
-import com.ml.shubham0204.docqa.ui.theme.*
-import com.ml.shubham0204.docqa.ui.screens.chat.ChatViewModel
+import com.ml.EdgeBrain.docqa.R
+import com.ml.EdgeBrain.docqa.data.*
+import com.ml.EdgeBrain.docqa.domain.llm.AppLLMProvider
+import com.ml.EdgeBrain.docqa.domain.llm.LLMInitializationState
+import com.ml.EdgeBrain.docqa.ui.theme.*
+import com.ml.EdgeBrain.docqa.ui.screens.chat.ChatViewModel
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import dev.jeziellago.compose.markdowntext.MarkdownText
