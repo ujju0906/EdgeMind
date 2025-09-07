@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:8449246619297061692",
-      "lastPropertyId": "4:3036087631455216131",
+      "lastPropertyId": "5:905490671636322609",
       "name": "Chunk",
       "properties": [
         {
@@ -32,6 +32,11 @@
           "indexId": "2:6017931583076154525",
           "type": 28,
           "flags": 8
+        },
+        {
+          "id": "5:905490671636322609",
+          "name": "docFileName",
+          "type": 9
         }
       ],
       "relations": []
@@ -64,9 +69,48 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "3:5233666523746207286",
+      "lastPropertyId": "7:6822598813683523732",
+      "name": "ChatMessage",
+      "properties": [
+        {
+          "id": "1:6520716903704532413",
+          "name": "messageId",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:4219648447352260962",
+          "name": "question",
+          "type": 9
+        },
+        {
+          "id": "3:321996049796820328",
+          "name": "response",
+          "type": 9
+        },
+        {
+          "id": "4:7535551845928138272",
+          "name": "timestamp",
+          "type": 6
+        },
+        {
+          "id": "5:7701076487074846915",
+          "name": "isUserMessage",
+          "type": 1
+        },
+        {
+          "id": "6:5429939612298282499",
+          "name": "contextUsed",
+          "type": 9
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "2:1370145163078906664",
+  "lastEntityId": "3:5233666523746207286",
   "lastIndexId": "2:6017931583076154525",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
@@ -74,7 +118,9 @@
   "modelVersionParserMinimum": 5,
   "retiredEntityUids": [],
   "retiredIndexUids": [],
-  "retiredPropertyUids": [],
+  "retiredPropertyUids": [
+    6822598813683523732
+  ],
   "retiredRelationUids": [],
   "version": 1
 }

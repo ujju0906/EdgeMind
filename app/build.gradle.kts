@@ -2,17 +2,21 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.compose.compiler)
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.ksp)
     id("io.objectbox")
 }
 
+import com.example.build.loadProperties
+
+val localProperties = loadProperties(rootProject.file("local.properties"))
+
 android {
-    namespace = "com.ml.shubham0204.docqa"
+    namespace = "com.ml.EdgeBrain.docqa"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.ml.shubham0204.docqa"
-        minSdk = 26
+        applicationId = "com.ml.EdgeBrain.docqa"
+        minSdk = 29
         targetSdk = 35
         versionCode = 1
         versionName = "0.0.1"
@@ -21,13 +25,14 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        proguardFiles("proguard-rules.pro")
     }
     signingConfigs {
         create("release") {
-            storeFile = file("../keystore.jks")
-            storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
-            keyAlias = System.getenv("RELEASE_KEYSTORE_ALIAS")
-            keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            storeFile = file(localProperties.getProperty("release.storeFile", "DEFAULT_PATH_TO_YOUR_KEYSTORE"))
+            storePassword = localProperties.getProperty("release.storePassword", "DEFAULT_STORE_PASSWORD")
+            keyAlias = localProperties.getProperty("release.keyAlias", "DEFAULT_KEY_ALIAS")
+            keyPassword = localProperties.getProperty("release.keyPassword", "DEFAULT_KEY_PASSWORD")
         }
     }
     buildTypes {
@@ -53,17 +58,32 @@ android {
     packaging {
         resources {
             excludes += "META-INF/DEPENDENCIES"
+            pickFirsts += "META-INF/gradle/incremental.annotation.processors"
         }
     }
+    buildToolsVersion = "35.0.0"
+    ndkVersion = "27.2.12479018"
 }
 
 ksp {
     arg("KOIN_CONFIG_CHECK", "true")
+    arg("KOIN_LOG_LEVEL", "INFO")
 }
 
 configurations {
     all {
         exclude(group = "io.objectbox", module = "objectbox-android-objectbrowser")
+    }
+}
+
+// Configuration for dependency resolution
+configurations.all {
+    resolutionStrategy {
+        eachDependency {
+            if (requested.group == "org.jetbrains.kotlin") {
+                useVersion("2.0.0")
+            }
+        }
     }
 }
 
@@ -84,9 +104,9 @@ dependencies {
     implementation(libs.apache.poi.ooxml)
 
     // Sentence Embeddings
-    // https://github.com/shubham0204/Sentence-Embeddings-Android
+    // https://github.com/EdgeBrain/Sentence-Embeddings-Android
     implementation(files("libs/sentence_embeddings.aar"))
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.17.0")
+    implementation(libs.onnxruntime.android)
 
     // iTextPDF - for parsing PDFs
     implementation(libs.itextpdf)
@@ -99,29 +119,25 @@ dependencies {
     // Gemini SDK - LLM
     implementation(libs.generativeai)
 
-    // MediaPipe LLM Inference - Local LLM
-    implementation("com.google.mediapipe:tasks-genai:0.10.24")
+    // MediaPipe LLM Inference - Local LLM (Updated for Android 15 compatibility)
+    implementation(libs.tasks.genai)
 
     // compose-markdown
     // https://github.com/jeziellago/compose-markdown
     implementation(libs.compose.markdown)
 
     // Koin dependency injection
+    implementation(platform(libs.koin.bom))
     implementation(libs.koin.android)
     implementation(libs.koin.annotations)
     implementation(libs.koin.androidx.compose)
     ksp(libs.koin.ksp.compiler)
 
     // For secured/encrypted shared preferences
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
-
-    // Koin
-    implementation(platform("io.insert-koin:koin-bom:3.5.6"))
-    implementation("io.insert-koin:koin-android")
-    implementation("io.insert-koin:koin-androidx-compose")
+    implementation(libs.androidx.security.crypto)
 
     // WorkManager for background tasks
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    implementation(libs.androidx.work.runtime.ktx)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

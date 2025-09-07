@@ -69,9 +69,53 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "3:5233666523746207286",
+      "lastPropertyId": "8:6203337804682410575",
+      "name": "ChatMessage",
+      "properties": [
+        {
+          "id": "1:6520716903704532413",
+          "name": "messageId",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:4219648447352260962",
+          "name": "question",
+          "type": 9
+        },
+        {
+          "id": "3:321996049796820328",
+          "name": "response",
+          "type": 9
+        },
+        {
+          "id": "4:7535551845928138272",
+          "name": "timestamp",
+          "type": 6
+        },
+        {
+          "id": "5:7701076487074846915",
+          "name": "isUserMessage",
+          "type": 1
+        },
+        {
+          "id": "6:5429939612298282499",
+          "name": "contextUsed",
+          "type": 9
+        },
+        {
+          "id": "8:6203337804682410575",
+          "name": "detailedContext",
+          "type": 9
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "2:1370145163078906664",
+  "lastEntityId": "3:5233666523746207286",
   "lastIndexId": "2:6017931583076154525",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
@@ -79,7 +123,9 @@
   "modelVersionParserMinimum": 5,
   "retiredEntityUids": [],
   "retiredIndexUids": [],
-  "retiredPropertyUids": [],
+  "retiredPropertyUids": [
+    6822598813683523732
+  ],
   "retiredRelationUids": [],
   "version": 1
 }

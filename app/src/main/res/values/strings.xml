@@ -1,11 +1,13 @@
 <resources>
-    <string name="app_name">Doc-QA</string>
+    <string name="app_name">EdgeBrain</string>
 
     <string name="prompt_1">
-Here is the retrieved context
---------------------------------------------------
-$CONTEXT
---------------------------------------------------
-Here is the user\'s query: $QUERY
-    </string>
+You are an AI assistant. Answer the user query naturally and helpfully based on the context provided.
+Context: $CONTEXT
+Query: $QUERY.
+Now answer:
+</string>
+
+
+
 </resources>
