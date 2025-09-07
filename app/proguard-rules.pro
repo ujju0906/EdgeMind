@@ -156,8 +156,8 @@
 # ============================================================================
 
 # Keep custom sentence embeddings AAR classes
--keep class com.github.EdgeBrain.** { *; }
--keepclassmembers class com.github.EdgeBrain.** { *; }
+-keep class com.github.EdgeMind.** { *; }
+-keepclassmembers class com.github.EdgeMind.** { *; }
 
 # Keep any classes in the custom AAR
 -keep class sentence_embeddings.** { *; }
@@ -188,20 +188,20 @@
 # ============================================================================
 
 # Keep all classes in the app package
--keep class com.ml.EdgeBrain.docqa.** { *; }
--keepclassmembers class com.ml.EdgeBrain.docqa.** { *; }
+-keep class com.ml.EdgeMind.docqa.** { *; }
+-keepclassmembers class com.ml.EdgeMind.docqa.** { *; }
 
 # Keep data models
--keep class com.ml.EdgeBrain.docqa.data.** { *; }
--keepclassmembers class com.ml.EdgeBrain.docqa.data.** { *; }
+-keep class com.ml.EdgeMind.docqa.data.** { *; }
+-keepclassmembers class com.ml.EdgeMind.docqa.data.** { *; }
 
 # Keep domain classes
--keep class com.ml.EdgeBrain.docqa.domain.** { *; }
--keepclassmembers class com.ml.EdgeBrain.docqa.domain.** { *; }
+-keep class com.ml.EdgeMind.docqa.domain.** { *; }
+-keepclassmembers class com.ml.EdgeMind.docqa.domain.** { *; }
 
 # Keep UI classes
--keep class com.ml.EdgeBrain.docqa.ui.** { *; }
--keepclassmembers class com.ml.EdgeBrain.docqa.ui.** { *; }
+-keep class com.ml.EdgeMind.docqa.ui.** { *; }
+-keepclassmembers class com.ml.EdgeMind.docqa.ui.** { *; }
 
 # Keep ViewModels
 -keep class * extends androidx.lifecycle.ViewModel { *; }
@@ -305,7 +305,7 @@
 -dontwarn com.google.mediapipe.**
 -dontwarn io.insert-koin.**
 -dontwarn com.github.jeziellago.**
--dontwarn com.github.EdgeBrain.**
+-dontwarn com.github.EdgeMind.**
 
 # Don't warn about missing classes
 -dontwarn android.support.**

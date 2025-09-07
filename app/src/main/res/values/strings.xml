@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">EdgeBrain</string>
+    <string name="app_name">EdgeMind</string>
 
     <string name="prompt_1">
 You are an AI assistant. Answer the user query naturally and helpfully based on the context provided.
