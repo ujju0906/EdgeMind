@@ -1,5 +1,5 @@
 package com.ml.EdgeMind.docqa.domain.llm
-
+/*  This File is not used in the project */
 import android.util.Log
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.GenerationConfig
