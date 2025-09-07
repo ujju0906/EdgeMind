@@ -1,1 +1,15 @@
-*.apk*.dm*.log*.iml.DS_Store/local.properties/output-metadata.json/app/release//.gradle//.vscode//.idea//build//*/build/
+*.apk
+*.dm
+*.log
+*.iml
+.DS_Store
+
+/output-metadata.json
+
+/app/release/
+/.gradle/
+/.vscode/
+/.idea/
+/build/
+/*/build/
+local.properties
